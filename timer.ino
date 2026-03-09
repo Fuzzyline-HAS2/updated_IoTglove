@@ -7,6 +7,7 @@ void TimerInit()
   ir_receive_timer_id = ir_receive_timer.setInterval(500, IrReceive);
   ir_receive_timer.disable(ir_receive_timer_id);
   wifi_timer_id = wifi_timer.setInterval(1000, WifiTimerFunc);
+  battery_timer_id = battery_timer.setInterval(60000, BatteryCheck); // 1분마다 배터리 확인
 }
 
 /**
@@ -18,6 +19,7 @@ void TimerRun()
   wifi_timer.run();
   hacking_timer.run();
   neopixel_timer.run();
+  battery_timer.run();
 }
 
 void WifiTimerFunc()

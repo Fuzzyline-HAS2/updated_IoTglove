@@ -17,12 +17,7 @@ bool lifechip_receive;
 bool motor_on;
 String ir_decode_data;
 
-typedef enum GameState
-{
-    setting,
-    ready,
-    activate
-};
+typedef enum GameState { setting, ready, activate };
 GameState game_state = setting;
 
 //============================ Hardware Serial ============================
@@ -45,7 +40,7 @@ void SensorInit();
 void BeetleScanWifi();
 
 //================================ Wifi ==================================
-HAS2_Wifi has2wifi;
+HAS2_Wifi has2wifi("http://172.30.1.43");
 
 bool activate_bool;
 
@@ -101,10 +96,14 @@ const int MotorMAX_DUTY_CYCLE = (int)(pow(2, MotorResolution) - 1);
 #define vibration_mode4 230
 #define vibration_mode5 240
 
-const int vibration_pattern_1[] = {1, 0, 0, 1, 5, 2, 0, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0, 0}; // BPM 83
-const int vibration_pattern_2[] = {1, 0, 1, 5, 3, 0, 0, 1, 2, 1, 0, 0};                   // BPM 125
+const int vibration_pattern_1[] = {1, 0, 0, 1, 5, 2, 0, 0, 0,
+                                   1, 2, 1, 0, 0, 0, 0, 0, 0}; // BPM 83
+const int vibration_pattern_2[] = {1, 0, 1, 5, 3, 0,
+                                   0, 1, 2, 1, 0, 0}; // BPM 125
 const int vibration_pattern_3[] = {5, 5, 5, 5, 5, 5, 5};
-const int vibration_pattern_4[] = {1, 2, 1, 0, 0, 1, 5, 2, 1, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // BPM 56
+const int vibration_pattern_4[] = {
+    1, 2, 1, 0, 0, 1, 5, 2, 1, 0, 1, 2, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // BPM 56
 
 void MotorInit();
 int Intensity(int intensity);
@@ -131,6 +130,7 @@ SimpleTimer player_ir_send_timer;
 SimpleTimer hacking_timer; // ir 수신 타이머
 SimpleTimer wifi_timer;
 SimpleTimer neopixel_timer;
+SimpleTimer battery_timer; // 배터리 주기적 확인 타이머
 
 void TimerInit();
 void TimerRun();
@@ -142,6 +142,7 @@ int player_ir_send_timer_id;
 int hacking_timer_id;
 int wifi_timer_id;
 int neopixel_timer_id;
+int battery_timer_id;
 
 //================================ Neo =================================
 void tagger_blink();
