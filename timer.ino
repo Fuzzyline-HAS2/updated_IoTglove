@@ -9,7 +9,7 @@ void TimerInit()
   wifi_timer_id = wifi_timer.setInterval(1000, WifiTimerFunc);
   battery_timer_id      = battery_timer.setInterval(60000, BatteryCheck);    // 1분마다 배터리 확인
   retry_timer_id        = retry_timer.setInterval(2000, RetryPending);       // 2초마다 재전송 시도
-  wifi_manager_timer_id = wifi_manager_timer.setInterval(3000, WifiManagerRun); // 3초마다 RSSI 체크
+  wifi_manager_timer_id = wifi_manager_timer.setInterval(1000, WifiManagerRun); // 1초마다 RSSI 체크
 }
 
 /**
