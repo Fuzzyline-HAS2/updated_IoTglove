@@ -267,7 +267,7 @@ void DataChange()
                 cmd = "player.LifeChip.pic=player.life_chip_pic.val";
                 sendCommand(cmd.c_str());
                 if((String)(const char *)cur["role"] == "ghost" ){
-                    has2wifi.Send((String)(const char *)my["device_name"], "role", "revival");
+                    SafeSend((String)(const char *)my["device_name"], "role", "revival");
                 }
             }
             else if ((int)my["life_chip"] > 1)
@@ -277,7 +277,7 @@ void DataChange()
             }
             else if ((int)my["life_chip"] < 1)
             {
-                has2wifi.Send((String)(const char *)my["device_name"], "role", "ghost");
+                SafeSend((String)(const char *)my["device_name"], "role", "ghost");
             }
 
             cmd = "player.life_chip.val=" + (String)(const char *)my["life_chip"];

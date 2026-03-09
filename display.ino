@@ -116,10 +116,10 @@ void NextionReceived(String *nextion_string)
     }
     else if (*nextion_string == "lifechip_receive")
     {
-        has2wifi.Situation(ir_decode_data, "send_life");
+        SafeSituation(ir_decode_data, "send_life");
         if ((String)(const char *)my["role"] == "ghost")
         {
-            has2wifi.Send((String)(const char *)my["device_name"], "role", "revival");
+            SafeSend((String)(const char *)my["device_name"], "role", "revival");
         }
         else if ((String)(const char *)my["role"] == "player")
         {
@@ -130,7 +130,7 @@ void NextionReceived(String *nextion_string)
     }
     else if (*nextion_string == "revival")
     {
-        has2wifi.Send((String)(const char *)my["device_name"], "role", "player");
+        SafeSend((String)(const char *)my["device_name"], "role", "player");
         revival = false;
         ir_receive_timer.enable(ir_receive_timer_id);
     }
@@ -143,11 +143,11 @@ void NextionReceived(String *nextion_string)
         hacking = false;
         if ((int)my["life_chip"] > 1)
         {
-            has2wifi.Send((String)(const char *)my["device_name"], "role", "revival");
+            SafeSend((String)(const char *)my["device_name"], "role", "revival");
         }
         if ((int)my["life_chip"] > 0)
         {
-            has2wifi.Situation(ir_decode_data, "taken");
+            SafeSituation(ir_decode_data, "taken");
         }
     }
     else if (*nextion_string == "messege_exit")
@@ -161,7 +161,7 @@ void NextionReceived(String *nextion_string)
             Serial.println("messege ghost");
             PageChange("ghost");
         }
-        has2wifi.Send((String)(const char *)my["device_name"], "message_sender", "no");
+        SafeSend((String)(const char *)my["device_name"], "message_sender", "no");
     }
     else
     {

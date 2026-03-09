@@ -131,6 +131,7 @@ SimpleTimer hacking_timer; // ir 수신 타이머
 SimpleTimer wifi_timer;
 SimpleTimer neopixel_timer;
 SimpleTimer battery_timer; // 배터리 주기적 확인 타이머
+SimpleTimer retry_timer;   // WiFi 끊김 시 재전송 타이머
 
 void TimerInit();
 void TimerRun();
@@ -143,6 +144,12 @@ int hacking_timer_id;
 int wifi_timer_id;
 int neopixel_timer_id;
 int battery_timer_id;
+int retry_timer_id;
+
+//============================== Wifi Recovery ==============================
+void SafeSend(String device, String column, String value);
+void SafeSituation(String device, String situation);
+void RetryFunc();
 
 //================================ Neo =================================
 void tagger_blink();

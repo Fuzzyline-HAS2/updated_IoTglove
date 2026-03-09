@@ -174,8 +174,8 @@ void BatteryCheck()
     static bool send_complete = false;
     if (!send_complete)
     {
-      send_complete = true;
-      has2wifi.Send((String)(const char *)my["device_name"], "device_state", "battery");
+      send_complete = true; // 큐에 저장되든 직접 전송되든 중복 방지
+      SafeSend((String)(const char *)my["device_name"], "device_state", "battery");
     }
   }
 }
@@ -278,7 +278,7 @@ void BeetleScanWifi()
       // if (wifi_name.startsWith("HAS2"))
       if (wifi_name.startsWith("badland"))
       {
-        has2wifi.Send((String)(const char *)my["device_name"], "location", wifi_name);
+        SafeSend((String)(const char *)my["device_name"], "location", wifi_name);
       }
       else
       {
