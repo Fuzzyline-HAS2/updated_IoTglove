@@ -116,17 +116,23 @@ void SafeSituation(String device, String situation)
 }
 
 /**
- * @brief 2초마다 실행. 큐 재전송 시도 후 큐가 완전히 비워지면 서버 상태 동기화
+ * @brief 2초마다 실행.
+ *        - 큐에 항목이 있으면 재전송 시도 (성공한 것만 제거)
+ *        - 재연결 직후(just_reconnected)이고 큐가 완전히 비워졌을 때만 서버 동기화
+ *          (큐 남아있으면 동기화 보류 → 다음 retry에서 재시도)
  */
 void RetryPending()
 {
     if (WiFi.status() != WL_CONNECTED) return;
+    if (!just_reconnected && IsQueueEmpty()) return; // 할 일 없음
 
     DrainQueue();
 
-    // 큐가 완전히 비워졌을 때만 서버 동기화 (일부 실패 남아있으면 스냅샷 꼬임 방지)
-    if (IsQueueEmpty())
+    // 재연결 직후이고 큐까지 비워졌을 때만 서버 상태 동기화
+    if (just_reconnected && IsQueueEmpty())
     {
+        just_reconnected = false;
+        Serial.println("[Recovery] Queue empty after reconnect, syncing server state...");
         has2wifi.ReceiveMine();
         DataChange();
     }

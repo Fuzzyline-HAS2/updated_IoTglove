@@ -7,8 +7,9 @@ void TimerInit()
   ir_receive_timer_id = ir_receive_timer.setInterval(500, IrReceive);
   ir_receive_timer.disable(ir_receive_timer_id);
   wifi_timer_id = wifi_timer.setInterval(1000, WifiTimerFunc);
-  battery_timer_id = battery_timer.setInterval(60000, BatteryCheck); // 1분마다 배터리 확인
-  retry_timer_id = retry_timer.setInterval(2000, RetryPending);      // 2초마다 재전송 시도
+  battery_timer_id      = battery_timer.setInterval(60000, BatteryCheck);    // 1분마다 배터리 확인
+  retry_timer_id        = retry_timer.setInterval(2000, RetryPending);       // 2초마다 재전송 시도
+  wifi_manager_timer_id = wifi_manager_timer.setInterval(3000, WifiManagerRun); // 3초마다 RSSI 체크
 }
 
 /**
@@ -22,12 +23,12 @@ void TimerRun()
   neopixel_timer.run();
   battery_timer.run();
   retry_timer.run();
+  wifi_manager_timer.run();
 }
 
 void WifiTimerFunc()
 {
-  // has2wifi.Connect("city");
-  has2wifi.Connect("badland");
+  // Connect()는 WifiManager가 담당. 여기서는 서버 폴링만
+  if (WiFi.status() != WL_CONNECTED) return;
   has2wifi.Loop(DataChange);
-
 }

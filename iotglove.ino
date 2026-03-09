@@ -11,21 +11,24 @@
 
 #include "iotglove.h"
 
-//************************************************ Core1 ********************************************************************
+//************************************************ Core1
+//********************************************************************
 /**
  * @brief IoT Glove Intialize
  */
-void IotGloveInit()
-{
+void IotGloveInit() {
   Serial.begin(115200);
-  MySerial1.begin(115200, SERIAL_8N1, SERIAL1_RX_PIN, SERIAL1_TX_PIN); // Beetle과 UART 통신 연결 세팅
-  nexInit();                                                           // 디스플레이 세팅
+  MySerial1.begin(115200, SERIAL_8N1, SERIAL1_RX_PIN,
+                  SERIAL1_TX_PIN); // Beetle과 UART 통신 연결 세팅
+  nexInit();                       // 디스플레이 세팅
   MySerial2.begin(9600, SERIAL_8N1, SERIAL2_RX_PIN, SERIAL2_TX_PIN);
   // has2wifi.Setup();     // 사무실 와이파이
   // has2wifi.Setup("city"); // 쌈지 시티 와이파이
-  has2wifi.Setup("main_badland", "Code3824@");  // 쌈지 배드랜드 와이파이
-  SensorInit(); // IoT Glove 사용 센서, 모듈 세팅
-  TimerInit();  // 타이머 세팅
+  has2wifi.Setup("main_badland", "Code3824@"); // 쌈지 배드랜드 와이파이
+  WifiManagerInit();                           // WiFi 이벤트 핸들러 등록
+  SensorInit();                                // IoT Glove 사용 센서, 모듈 세팅
+  TimerInit();                                 // 타이머 세팅
+  BatteryCheck();
   has2wifi.Loop();
   DataChange();
 }
@@ -33,8 +36,7 @@ void IotGloveInit()
 /**
  * @brief 아두이노 기본 문법 (전원이 켜지면 한번만 실행)
  */
-void setup()
-{
+void setup() {
   delay(500);
   IotGloveInit();
 }
@@ -42,13 +44,11 @@ void setup()
 /**
  * @brief 아두이노 기본 문법 (전원이 켜져있는동안 Core1에서 계속 실행)
  */
-void loop()
-{
+void loop() {
   TimerRun();
   BeetleScanWifi();
 
-  if (game_state == activate)
-  {
+  if (game_state == activate) {
     ActivateFunc();
   }
 }

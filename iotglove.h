@@ -130,8 +130,9 @@ SimpleTimer player_ir_send_timer;
 SimpleTimer hacking_timer; // ir 수신 타이머
 SimpleTimer wifi_timer;
 SimpleTimer neopixel_timer;
-SimpleTimer battery_timer; // 배터리 주기적 확인 타이머
-SimpleTimer retry_timer;   // WiFi 끊김 시 재전송 타이머
+SimpleTimer battery_timer;      // 배터리 주기적 확인 타이머
+SimpleTimer retry_timer;        // WiFi 끊김 시 재전송 타이머
+SimpleTimer wifi_manager_timer; // RSSI 체크 및 로밍 타이머
 
 void TimerInit();
 void TimerRun();
@@ -145,11 +146,18 @@ int wifi_timer_id;
 int neopixel_timer_id;
 int battery_timer_id;
 int retry_timer_id;
+int wifi_manager_timer_id;
 
 //============================== Wifi Recovery ==============================
+volatile bool just_reconnected = false; // 재연결 직후 플래그 (wifi_manager → wifi_recovery)
+
 void SafeSend(String device, String column, String value);
 void SafeSituation(String device, String situation);
 void RetryPending();
+
+//============================== Wifi Manager ==============================
+void WifiManagerInit();
+void WifiManagerRun();
 
 //================================ Neo =================================
 void tagger_blink();
