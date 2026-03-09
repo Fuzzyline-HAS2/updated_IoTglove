@@ -1,12 +1,19 @@
 #include "iotglove.h"
 
-// ======================== Badland AP 목록 ========================
+// ======================== AP 목록 ========================
 const char *BADLAND_SSIDS[] = {
     "badland_ruins", "badland_shoot", "badland_prison",
     "badland_check", "badland_auto"
 };
-const int   BADLAND_SSID_COUNT = 5;
-const char *BADLAND_PASSWORD   = "Code3824@";
+const char *CITY_SSIDS[] = {
+    "HAS2_food", "HAS2_office", "HAS2_gun",
+    "HAS2_bar", "HAS2_house", "tp-link"
+};
+const char *WIFI_PASSWORD = "Code3824@";
+
+// 현재 테마 AP 목록 (WifiManagerInit에서 설정)
+const char **CURRENT_SSIDS      = BADLAND_SSIDS;
+int          CURRENT_SSID_COUNT = 5;
 
 // ======================== RSSI 임계값 ========================
 #define RSSI_STABLE    -67   // 이상: 유지
@@ -21,10 +28,10 @@ WifiManagerState wm_state = WM_STABLE;
 bool is_intentional_roam = false;
 
 // ======================== 유틸 ========================
-bool isBadlandAP(String ssid)
+bool isKnownAP(String ssid)
 {
-    for (int i = 0; i < BADLAND_SSID_COUNT; i++)
-        if (ssid == BADLAND_SSIDS[i]) return true;
+    for (int i = 0; i < CURRENT_SSID_COUNT; i++)
+        if (ssid == CURRENT_SSIDS[i]) return true;
     return false;
 }
 
@@ -48,7 +55,7 @@ void onScanDone(int numNetworks)
         String ssid = WiFi.SSID(i);
         int    rssi = WiFi.RSSI(i);
         // 현재 AP 제외하고 badland AP 중 가장 강한 것 탐색
-        if (isBadlandAP(ssid) && ssid != current_ssid && rssi > best_rssi)
+        if (isKnownAP(ssid) && ssid != current_ssid && rssi > best_rssi)
         {
             best_rssi = rssi;
             best_ssid = ssid;
@@ -62,7 +69,7 @@ void onScanDone(int numNetworks)
                        ") -> " + best_ssid + "(" + String(best_rssi) + ")");
         is_intentional_roam = true;
         wm_state = WM_ROAMING;
-        WiFi.begin(best_ssid.c_str(), BADLAND_PASSWORD);
+        WiFi.begin(best_ssid.c_str(), WIFI_PASSWORD);
     }
     else
     {
@@ -112,7 +119,7 @@ void handleDisconnected()
 
     for (int i = 0; i < n; i++)
     {
-        if (isBadlandAP(WiFi.SSID(i)) && WiFi.RSSI(i) > best_rssi)
+        if (isKnownAP(WiFi.SSID(i)) && WiFi.RSSI(i) > best_rssi)
         {
             best_rssi = WiFi.RSSI(i);
             best_ssid = WiFi.SSID(i);
@@ -123,7 +130,7 @@ void handleDisconnected()
     if (best_ssid != "")
     {
         Serial.println("[WifiManager] Best AP: " + best_ssid + " (" + String(best_rssi) + " dBm)");
-        WiFi.begin(best_ssid.c_str(), BADLAND_PASSWORD);
+        WiFi.begin(best_ssid.c_str(), WIFI_PASSWORD);
     }
     else
     {
@@ -132,8 +139,18 @@ void handleDisconnected()
 }
 
 // ======================== 초기화 ========================
-void WifiManagerInit()
+void WifiManagerInit(String theme)
 {
+    if (theme == "city")
+    {
+        CURRENT_SSIDS      = CITY_SSIDS;
+        CURRENT_SSID_COUNT = 6;
+    }
+    else // badland (기본값)
+    {
+        CURRENT_SSIDS      = BADLAND_SSIDS;
+        CURRENT_SSID_COUNT = 5;
+    }
     WiFi.onEvent(WiFiEventHandler);
 }
 

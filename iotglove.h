@@ -156,7 +156,7 @@ void SafeSituation(String device, String situation);
 void RetryPending();
 
 //============================== Wifi Manager ==============================
-void WifiManagerInit();
+void WifiManagerInit(String theme);
 void WifiManagerRun();
 
 //================================ Neo =================================
