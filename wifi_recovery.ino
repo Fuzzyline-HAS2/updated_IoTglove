@@ -46,64 +46,88 @@ void AddToQueue(ActionType type, String device, String key, String value)
 }
 
 /**
- * @brief 대기 큐에 있는 액션을 순서대로 재전송
+ * @brief 큐가 완전히 비었는지 확인
+ */
+bool IsQueueEmpty()
+{
+    for (int i = 0; i < PENDING_QUEUE_SIZE; i++)
+        if (pending_queue[i].active) return false;
+    return true;
+}
+
+/**
+ * @brief 대기 큐를 순서대로 재전송. 성공한 것만 큐에서 제거
  */
 void DrainQueue()
 {
     for (int i = 0; i < PENDING_QUEUE_SIZE; i++)
     {
-        if (pending_queue[i].active)
+        if (!pending_queue[i].active) continue;
+
+        bool success = false;
+        if (pending_queue[i].type == ACTION_SEND)
         {
-            if (pending_queue[i].type == ACTION_SEND)
-            {
-                has2wifi.Send(pending_queue[i].device_name, pending_queue[i].key, pending_queue[i].value);
-                Serial.println("[Recovery] Retried Send: " + pending_queue[i].key + "=" + pending_queue[i].value);
-            }
-            else if (pending_queue[i].type == ACTION_SITUATION)
-            {
-                has2wifi.Situation(pending_queue[i].device_name, pending_queue[i].key);
-                Serial.println("[Recovery] Retried Situation: " + pending_queue[i].key);
-            }
-            pending_queue[i].active = false;
+            success = has2wifi.Send(pending_queue[i].device_name, pending_queue[i].key, pending_queue[i].value);
+            Serial.println("[Recovery] Retry Send " + String(success ? "OK" : "FAIL") + ": " + pending_queue[i].key + "=" + pending_queue[i].value);
         }
+        else if (pending_queue[i].type == ACTION_SITUATION)
+        {
+            success = has2wifi.Situation(pending_queue[i].device_name, pending_queue[i].key);
+            Serial.println("[Recovery] Retry Situation " + String(success ? "OK" : "FAIL") + ": " + pending_queue[i].key);
+        }
+
+        if (success)
+            pending_queue[i].active = false; // 성공한 것만 제거, 실패는 다음 retry에서 재시도
     }
 }
 
 /**
- * @brief WiFi 상태 확인 후 전송. 끊겼으면 큐에 저장
+ * @brief WiFi 상태 확인 후 전송. 실패하면 큐에 저장
  */
 void SafeSend(String device, String column, String value)
 {
-    if (WiFi.status() == WL_CONNECTED)
+    if (WiFi.status() != WL_CONNECTED)
     {
-        has2wifi.Send(device, column, value);
+        AddToQueue(ACTION_SEND, device, column, value);
+        return;
     }
-    else
+    bool success = has2wifi.Send(device, column, value);
+    if (!success)
     {
         AddToQueue(ACTION_SEND, device, column, value);
     }
 }
 
 /**
- * @brief WiFi 상태 확인 후 Situation 전송. 끊겼으면 큐에 저장
+ * @brief WiFi 상태 확인 후 Situation 전송. 실패하면 큐에 저장
  */
 void SafeSituation(String device, String situation)
 {
-    if (WiFi.status() == WL_CONNECTED)
+    if (WiFi.status() != WL_CONNECTED)
     {
-        has2wifi.Situation(device, situation);
+        AddToQueue(ACTION_SITUATION, device, situation, "");
+        return;
     }
-    else
+    bool success = has2wifi.Situation(device, situation);
+    if (!success)
     {
         AddToQueue(ACTION_SITUATION, device, situation, "");
     }
 }
 
 /**
- * @brief 5초마다 타이머에서 호출. WiFi 재연결 시 큐 드레인
+ * @brief 2초마다 실행. 큐 재전송 시도 후 큐가 완전히 비워지면 서버 상태 동기화
  */
-void RetryFunc()
+void RetryPending()
 {
     if (WiFi.status() != WL_CONNECTED) return;
+
     DrainQueue();
+
+    // 큐가 완전히 비워졌을 때만 서버 동기화 (일부 실패 남아있으면 스냅샷 꼬임 방지)
+    if (IsQueueEmpty())
+    {
+        has2wifi.ReceiveMine();
+        DataChange();
+    }
 }

@@ -149,7 +149,7 @@ int retry_timer_id;
 //============================== Wifi Recovery ==============================
 void SafeSend(String device, String column, String value);
 void SafeSituation(String device, String situation);
-void RetryFunc();
+void RetryPending();
 
 //================================ Neo =================================
 void tagger_blink();
