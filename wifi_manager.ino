@@ -17,10 +17,6 @@ const char *BADLAND_PASSWORD   = "Code3824@";
 enum WifiManagerState { WM_STABLE, WM_WATCHING, WM_SCANNING, WM_ROAMING, WM_DISCONNECTED };
 WifiManagerState wm_state = WM_STABLE;
 
-// ======================== Backoff ========================
-unsigned long backoff_ms             = 1000;
-unsigned long last_reconnect_attempt = 0;
-
 // 의도적 로밍 중 플래그 (로밍 시 disconnect 이벤트 무시용)
 bool is_intentional_roam = false;
 
@@ -86,7 +82,6 @@ void WiFiEventHandler(WiFiEvent_t event)
                        "  SSID: " + WiFi.SSID());
         just_reconnected    = true;
         is_intentional_roam = false;
-        backoff_ms          = 1000; // backoff 초기화
         wm_state            = WM_STABLE;
         break;
 
@@ -105,14 +100,10 @@ void WiFiEventHandler(WiFiEvent_t event)
     }
 }
 
-// ======================== 끊긴 상태 재연결 (backoff 적용) ========================
+// ======================== 끊긴 상태 재연결 ========================
 void handleDisconnected()
 {
-    unsigned long now = millis();
-    if (now - last_reconnect_attempt < backoff_ms) return;
-
-    last_reconnect_attempt = now;
-    Serial.println("[WifiManager] Reconnecting... (backoff: " + String(backoff_ms) + "ms)");
+    Serial.println("[WifiManager] Reconnecting...");
 
     // 어차피 끊긴 상태라 blocking scan 해도 HTTP 영향 없음
     int    n         = WiFi.scanNetworks();
@@ -138,9 +129,6 @@ void handleDisconnected()
     {
         Serial.println("[WifiManager] No badland AP found.");
     }
-
-    // 재시도마다 backoff 두 배 증가, 최대 30초 (GOT_IP 이벤트에서 초기화)
-    backoff_ms = min(backoff_ms * 2, (unsigned long)30000);
 }
 
 // ======================== 초기화 ========================
