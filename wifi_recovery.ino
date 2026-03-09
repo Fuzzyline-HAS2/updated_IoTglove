@@ -1,17 +1,5 @@
 #include "updated_IoTglove.h"
 
-#define PENDING_QUEUE_SIZE 8
-
-enum ActionType { ACTION_SEND, ACTION_SITUATION };
-
-struct PendingAction {
-    ActionType type;
-    String device_name;
-    String key;    // Send: column명 / Situation: situation명
-    String value;  // Send: value / Situation: 미사용
-    bool active;
-};
-
 PendingAction pending_queue[PENDING_QUEUE_SIZE];
 
 /**

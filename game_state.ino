@@ -30,7 +30,7 @@ void SettingFunc()
     }
     ir_receive_timer.disable(ir_receive_timer_id);
     pixels.lightColor(white);
-    ledcWrite(5, 0);
+    ledcWrite(BUZZER_PIN, 0);
 
     BatteryCheck();
 
@@ -91,7 +91,7 @@ void ActivateRunOnce()
     game_state = activate;
 
     MySerial1.print("activate ");
-    ledcWrite(5, 0);
+    ledcWrite(BUZZER_PIN, 0);
 
     if ((String)(const char *)my["role"] == "player" || (String)(const char *)my["role"] == "ghost")
     {

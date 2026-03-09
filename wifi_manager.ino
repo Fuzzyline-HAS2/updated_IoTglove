@@ -24,9 +24,13 @@ int          CURRENT_SSID_COUNT = 5;
 enum WifiManagerState { WM_STABLE, WM_WATCHING, WM_SCANNING, WM_ROAMING, WM_DISCONNECTED };
 WifiManagerState wm_state = WM_STABLE;
 
+// ======================== 스캔 용도 구분 ========================
+enum ScanPurpose { SCAN_NONE, SCAN_ROAM, SCAN_RECONNECT };
+ScanPurpose current_scan_purpose = SCAN_NONE;
+
 // ======================== 플래그 ========================
-bool is_intentional_roam  = false; // 의도적 로밍 중 (disconnect 이벤트 무시용)
-bool need_reconnect_scan  = false; // 끊긴 후 재연결 스캔 필요 여부
+bool is_intentional_roam = false; // 의도적 로밍 중 (disconnect 이벤트 무시용)
+bool need_reconnect_scan = false; // 끊긴 후 재연결 스캔 필요 여부
 
 // ======================== 유틸 ========================
 bool isKnownAP(String ssid)
@@ -36,17 +40,9 @@ bool isKnownAP(String ssid)
     return false;
 }
 
-// ======================== 비동기 스캔 콜백: 재연결용 ========================
-void onDisconnectScanDone(int numNetworks)
+// ======================== 스캔 결과 처리: 재연결용 ========================
+void handleReconnectScanDone(int numNetworks)
 {
-    if (numNetworks <= 0)
-    {
-        Serial.println("[WifiManager] Reconnect scan: no AP found, will retry.");
-        need_reconnect_scan = true; // 다음 WifiManagerRun에서 재시도
-        WiFi.scanDelete();
-        return;
-    }
-
     String best_ssid = "";
     int    best_rssi = -200;
 
@@ -68,20 +64,13 @@ void onDisconnectScanDone(int numNetworks)
     else
     {
         Serial.println("[WifiManager] No known AP found, will retry.");
-        need_reconnect_scan = true; // 다음 WifiManagerRun에서 재시도
+        need_reconnect_scan = true;
     }
 }
 
-// ======================== 비동기 스캔 콜백: 로밍용 ========================
-void onRoamScanDone(int numNetworks)
+// ======================== 스캔 결과 처리: 로밍용 ========================
+void handleRoamScanDone(int numNetworks)
 {
-    if (numNetworks <= 0)
-    {
-        wm_state = WM_WATCHING;
-        WiFi.scanDelete();
-        return;
-    }
-
     int    current_rssi = WiFi.RSSI();
     String current_ssid = WiFi.SSID();
     String best_ssid    = "";
@@ -123,10 +112,11 @@ void WiFiEventHandler(WiFiEvent_t event)
     case ARDUINO_EVENT_WIFI_STA_GOT_IP:
         Serial.println("[WifiManager] Connected - IP: " + WiFi.localIP().toString() +
                        "  SSID: " + WiFi.SSID());
-        just_reconnected    = true;
-        is_intentional_roam = false;
-        need_reconnect_scan = false;
-        wm_state            = WM_STABLE;
+        just_reconnected     = true;
+        is_intentional_roam  = false;
+        need_reconnect_scan  = false;
+        current_scan_purpose = SCAN_NONE;
+        wm_state             = WM_STABLE;
         break;
 
     case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
@@ -134,7 +124,7 @@ void WiFiEventHandler(WiFiEvent_t event)
         {
             Serial.println("[WifiManager] Disconnected. Scan scheduled.");
             wm_state            = WM_DISCONNECTED;
-            need_reconnect_scan = true; // WifiManagerRun에서 async scan 시작
+            need_reconnect_scan = true;
         }
         break;
 
@@ -156,23 +146,36 @@ void WifiManagerInit(String theme)
         CURRENT_SSIDS      = BADLAND_SSIDS;
         CURRENT_SSID_COUNT = 5;
     }
-    WiFi.setAutoReconnect(false); // 재연결은 WifiManager가 직접 관리
+    WiFi.setAutoReconnect(false);
     WiFi.onEvent(WiFiEventHandler);
 }
 
 // ======================== 1초마다 타이머에서 호출 ========================
 void WifiManagerRun()
 {
+    // 스캔 진행 중이면 결과 폴링
+    if (current_scan_purpose != SCAN_NONE)
+    {
+        int n = WiFi.scanComplete();
+        if (n == WIFI_SCAN_RUNNING) return; // 아직 스캔 중
+
+        current_scan_purpose == SCAN_RECONNECT ? handleReconnectScanDone(n)
+                                               : handleRoamScanDone(n);
+        current_scan_purpose = SCAN_NONE;
+        return;
+    }
+
     // --- 끊긴 상태 처리 ---
     if (WiFi.status() != WL_CONNECTED)
     {
-        if (wm_state == WM_ROAMING) return; // 의도적 로밍 중, 대기
+        if (wm_state == WM_ROAMING) return;
 
         if (need_reconnect_scan)
         {
-            need_reconnect_scan = false;
-            Serial.println("[WifiManager] Starting reconnect scan (async)...");
-            WiFi.scanNetworksAsync(onDisconnectScanDone); // non-blocking
+            need_reconnect_scan  = false;
+            current_scan_purpose = SCAN_RECONNECT;
+            Serial.println("[WifiManager] Starting reconnect scan...");
+            WiFi.scanNetworks(/*async=*/true); // non-blocking
         }
         return;
     }
@@ -191,12 +194,12 @@ void WifiManagerRun()
     }
     else
     {
-        // < -75 dBm: 로밍 후보 비동기 스캔
         if (wm_state != WM_SCANNING && wm_state != WM_ROAMING)
         {
-            wm_state = WM_SCANNING;
+            wm_state             = WM_SCANNING;
+            current_scan_purpose = SCAN_ROAM;
             Serial.println("[WifiManager] Weak signal (" + String(rssi) + " dBm), scanning for roam...");
-            WiFi.scanNetworksAsync(onRoamScanDone); // non-blocking
+            WiFi.scanNetworks(/*async=*/true); // non-blocking
         }
     }
 }

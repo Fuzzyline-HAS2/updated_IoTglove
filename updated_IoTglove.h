@@ -151,6 +151,16 @@ int wifi_manager_timer_id;
 //============================== Wifi Recovery ==============================
 volatile bool just_reconnected = false; // 재연결 직후 플래그 (wifi_manager → wifi_recovery)
 
+#define PENDING_QUEUE_SIZE 8
+enum ActionType { ACTION_SEND, ACTION_SITUATION };
+struct PendingAction {
+    ActionType type;
+    String device_name;
+    String key;
+    String value;
+    bool active;
+};
+
 void SafeSend(String device, String column, String value);
 void SafeSituation(String device, String situation);
 void RetryPending();
