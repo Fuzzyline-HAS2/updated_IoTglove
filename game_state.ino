@@ -29,7 +29,7 @@ void SettingFunc()
         neopixel_timer.deleteTimer(neopixel_timer_id);
     }
     ir_receive_timer.disable(ir_receive_timer_id);
-    pixels.lightColor(white);
+    lightColor(white);
     ledcWrite(BUZZER_PIN, 0);
 
     BatteryCheck();
@@ -55,7 +55,7 @@ void ReadyFunc()
     ir_receive_timer.disable(ir_receive_timer_id);
     sendCommand("sleep=0");
     PageChange("before_tagger");
-    pixels.lightColor(red);
+    lightColor(red);
 }
 
 /**
@@ -141,7 +141,7 @@ void DataChange()
             if ((String)(const char *)my["role"] == "player")
             {
                 PageChange("player");
-                pixels.lightColor(green);
+                lightColor(green);
                 ir_receive_timer.enable(ir_receive_timer_id);
             }
             else if ((String)(const char *)my["role"] == "tagger")
@@ -152,19 +152,19 @@ void DataChange()
                 }
                 ir_receive_timer.disable(ir_receive_timer_id);
                 PageChange("tagger");
-                pixels.lightColor(purple);
+                lightColor(purple);
             }
             else if ((String)(const char *)my["role"] == "revival")
             {
                 ir_receive_timer.disable(ir_receive_timer_id);
                 PageChange("revival");
-                pixels.lightColor(yellow);
+                lightColor(yellow);
                 revival = true;
             }
             else if ((String)(const char *)my["role"] == "ghost")
             {
                 PageChange("ghost");
-                pixels.lightColor(blue);
+                lightColor(blue);
                 ir_receive_timer.enable(ir_receive_timer_id);
             }
         }
@@ -220,12 +220,12 @@ void DataChange()
             if ((String)(const char *)my["role"] == "player" || (String)(const char *)my["role"] == "revival" || (String)(const char *)my["role"] == "ghost")
             {
                 PageChange("player");
-                pixels.lightColor(green);
+                lightColor(green);
             }
             else if ((String)(const char *)my["role"] == "tagger")
             {
                 PageChange("tagger");
-                pixels.lightColor(purple);
+                lightColor(purple);
             }
         }
     }
@@ -238,20 +238,20 @@ void DataChange()
             if ((String)(const char *)my["role"] == "player")
             {
                 PageChange("player");
-                pixels.lightColor(green);
+                lightColor(green);
                 ir_receive_timer.enable(ir_receive_timer_id);
             }
             else if ((String)(const char *)my["role"] == "revival")
             {
                 ir_receive_timer.disable(ir_receive_timer_id);
                 PageChange("revival");
-                pixels.lightColor(yellow);
+                lightColor(yellow);
                 revival = true;
             }
             else if ((String)(const char *)my["role"] == "ghost")
             {
                 PageChange("ghost");
-                pixels.lightColor(blue);
+                lightColor(blue);
                 ir_receive_timer.enable(ir_receive_timer_id);
             }
         }

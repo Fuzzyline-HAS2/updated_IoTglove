@@ -1,4 +1,12 @@
 #include "updated_IoTglove.h"
+
+// lightColor 대체 함수 (커스텀 NeoPixel 없이 표준 라이브러리로 동작)
+void lightColor(int color[3])
+{
+    pixels.fill(pixels.Color(color[0], color[1], color[2]));
+    pixels.show();
+}
+
 //****************************************** Initialize ******************************************
 void SensorInit()
 {
@@ -247,7 +255,7 @@ void tagger_blink()
 
   if (!blink)
   {
-    pixels.lightColor(purple);
+    lightColor(purple);
     blink = true;
   }
   else
