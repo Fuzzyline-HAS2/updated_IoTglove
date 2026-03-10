@@ -24,7 +24,7 @@ void IotGloveInit() {
   MySerial2.begin(9600, SERIAL_8N1, SERIAL2_RX_PIN, SERIAL2_TX_PIN);
   // has2wifi.Setup();     // 사무실 와이파이
   // has2wifi.Setup("city"); // 쌈지 시티 와이파이
-  has2wifi.Setup("badland_ruins", "Code3824@"); // 쌈지 배드랜드 와이파이
+  has2wifi.Setup("main_badland", "Code3824@"); // 쌈지 배드랜드 와이파이
   WifiManagerInit("badland");                   // WiFi 이벤트 핸들러 등록 (테마: badland / city)
   SensorInit(); // IoT Glove 사용 센서, 모듈 세팅
   TimerInit();  // 타이머 세팅

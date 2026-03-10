@@ -40,7 +40,7 @@ void SensorInit();
 void BeetleScanWifi();
 
 //================================ Wifi ==================================
-HAS2_Wifi has2wifi("http://172.30.1.43");
+HAS2_Wifi has2wifi("http://172.30.1.44");
 
 bool activate_bool;
 
