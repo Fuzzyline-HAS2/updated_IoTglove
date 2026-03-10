@@ -1,9 +1,12 @@
 #include "updated_IoTglove.h"
 
 // lightColor 대체 함수 (커스텀 NeoPixel 없이 표준 라이브러리로 동작)
-void lightColor(int color[3])
+void lightColor(int color[])
 {
-    pixels.fill(pixels.Color(color[0], color[1], color[2]));
+    for (int i = 0; i < NUMPIXELS; i++)
+    {
+        pixels.setPixelColor(i, pixels.Color(color[0], color[1], color[2]));
+    }
     pixels.show();
 }
 
