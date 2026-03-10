@@ -20,8 +20,9 @@ void SensorInit()
   MotorInit();
 
   // Buzzer init
-  ledcAttach(BUZZER_PIN, MotorFreq, MotorResolution);
-  ledcWrite(BUZZER_PIN, 0);
+  ledcSetup(5, MotorFreq, MotorResolution);
+  ledcAttachPin(BUZZER_PIN, 5);
+  ledcWrite(5, 0);
 
   // QRD1114 init
   pinMode(QRD1114_PIN, INPUT);
@@ -192,8 +193,9 @@ void MotorInit()
   // Linear Motor Init
   pinMode(MOTOR_INA1_PIN, OUTPUT);
   pinMode(MOTOR_INA2_PIN, OUTPUT);
-  ledcAttach(MOTOR_PWMA_PIN, MotorFreq, MotorResolution);
-  ledcWrite(MOTOR_PWMA_PIN, 0);
+  ledcSetup(MotorLedChannel, MotorFreq, MotorResolution);
+  ledcAttachPin(MOTOR_PWMA_PIN, MotorLedChannel);
+  ledcWrite(MotorLedChannel, 0);
 }
 
 int Intensity(int intensity)
@@ -236,7 +238,7 @@ void MotorOn(const int *vibration_pattern, int len)
   } // 진동 패턴 인덱스를 한칸씩 증가 시킴
   // Serial.print("repeat : "); Serial.println(repeat);
   // Serial.print("repeat[] : "); Serial.println(vibration_pattern[repeat]);
-  ledcWrite(MOTOR_PWMA_PIN, Intensity(vibration_pattern[repeat]));
+  ledcWrite(MotorLedChannel, Intensity(vibration_pattern[repeat]));
   delay(20);
   digitalWrite(MOTOR_INA1_PIN, HIGH);
   digitalWrite(MOTOR_INA2_PIN, LOW);
