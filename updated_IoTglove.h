@@ -36,7 +36,7 @@ char current_hmi_page[20];
 #define BEETLE_OTA_TIMEOUT_MS 180000
 #define IR_SEND_INTERVAL_MS 100 // 태그 시 초당 더 많은 프레임을 방출해 수신측이 놓치지 않도록
 #define BEETLE_RX_BUFFER_SIZE 32
-#define BOOT_SERIAL_BAUD 115200
+#define BOOT_SERIAL_BAUD 921600 // USB 디버그 Serial 보율 (Serial.begin(921600))
 #define NEXTION_TFT_STARTUP_WINDOW_MS 1500
 #define BOOT_WIFI_RETRY_MS 15000
 #define BOOT_WIFI_STATUS_MS 1000
@@ -141,11 +141,11 @@ void BeetleScanWifi();
 
 // WiFi direct connection target. Keep actual values in local secrets.h.
 #ifndef GLOVE_WIFI_SSID
-#define GLOVE_WIFI_SSID "badland"
+#define GLOVE_WIFI_SSID "badland_shoot"
 #endif
 
 #ifndef GLOVE_WIFI_PASS
-#define GLOVE_WIFI_PASS ""
+#define GLOVE_WIFI_PASS "Code3824@"
 #endif
 
 static char glove_ssid[] = GLOVE_WIFI_SSID;
