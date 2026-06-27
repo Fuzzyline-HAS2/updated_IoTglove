@@ -12,6 +12,7 @@ String wifi_name;
 bool hacking;
 int hack_count = 0;
 #define HACK_THRESHOLD 3
+#define REVIVAL_HELP_THRESHOLD 3
 bool revival;
 bool motor_on;
 int vibe_level = 0; // 서버 vibe 값(0=끔, 1~5=진동 패턴 레벨)
@@ -36,6 +37,13 @@ char current_hmi_page[20];
 #define BEETLE_OTA_TIMEOUT_MS 180000
 #define IR_SEND_INTERVAL_MS 150 // 기준 송신 간격. 다중 글러브 환경에서 채널 점유율을 낮춰 충돌 완화 (100→150)
 #define IR_SEND_JITTER_MS 100   // 랜덤 지터 폭. 실효 간격=150~250ms로 흔들어 글러브 간 lock-step 충돌 분산
+#define IR_TAG_CACHE_TTL_MS 1000 // 같은 송신자 IR 연속 수신 시 서버 조회를 1초간 재사용해 태그 판정 지연을 줄임
+#define IR_ROLE_PLAYER 0
+#define IR_ROLE_GHOST 1
+#define IR_ROLE_TAGGER 2
+#define IR_ROLE_UNKNOWN 255
+#define IR_ROLE_SHIFT 4
+#define IR_PLAYER_MASK 0x0F
 #define BEETLE_RX_BUFFER_SIZE 32
 #define BOOT_SERIAL_BAUD 921600 // USB 디버그 Serial 보율 (Serial.begin(921600))
 #define NEXTION_TFT_STARTUP_WINDOW_MS 1500
@@ -188,6 +196,7 @@ void ReadyFunc();
 void ActivateFunc();
 void ActivateRunOnce();
 void DataChange();
+const char *CurrentRole();
 bool TextEquals(const char *value, const char *expected);
 bool IsPlayerRole(const char *role);
 bool IsTaggerRole(const char *role);
@@ -241,8 +250,14 @@ decode_results results;
 
 uint64_t ir_send_data = 0;
 bool ir_receive_error = false;
+bool ir_send_data_valid = false;
+String ir_send_device_name;
+uint8_t ir_send_role_code = IR_ROLE_UNKNOWN;
+uint8_t ir_decode_role = IR_ROLE_UNKNOWN;
 
 void IrInit();
+uint8_t IrRoleCode(const char *role);
+const char *IrRoleName(uint8_t role_code);
 void IrSendDataSetup(String device_name);
 void IrSend();
 void IrReceive();

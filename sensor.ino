@@ -35,19 +35,58 @@ void IrInit()
  * @brief IR 송신 데이터 설정
  * @param device_name MYSQL에 저장되어 있는 디바이스 이름 => (const char*)my["device_name"]
  */
+uint8_t IrRoleCode(const char *role)
+{
+  if (IsTaggerRole(role))
+  {
+    return IR_ROLE_TAGGER;
+  }
+  if (IsRevivalRole(role))
+  {
+    return IR_ROLE_GHOST;
+  }
+  return IR_ROLE_PLAYER;
+}
+
+const char *IrRoleName(uint8_t role_code)
+{
+  switch (role_code)
+  {
+  case IR_ROLE_PLAYER:
+    return "player";
+  case IR_ROLE_GHOST:
+    return "revival";
+  case IR_ROLE_TAGGER:
+    return "tagger";
+  default:
+    return "";
+  }
+}
+
 void IrSendDataSetup(String device_name)
 {
   ir_send_data = 0;
+  ir_send_data_valid = false;
 
-  // Address : 그룹(G) command : 플레이어(P) 에 해당하는 숫자
-  // 1. String 변수를 char 배열형식으로 변경
-  int str_len = device_name.length() + 1;
-  char char_device_name[str_len];
-  device_name.toCharArray(char_device_name, str_len);
+  if (device_name.length() < 4)
+  {
+    DebugPrint("[IR] invalid device_name: ");
+    DebugPrintln(device_name);
+    return;
+  }
 
-  // 2. 데이터 나누기
-  byte address = char_device_name[1] - '0'; // char형 변수에서 int 값을 얻기위해 -'0'
-  byte command = char_device_name[3] - '0';
+  int group = device_name.charAt(1) - '0';
+  int player = device_name.charAt(3) - '0';
+  if (group < 0 || group > 9 || player < 0 || player > 9)
+  {
+    DebugPrint("[IR] invalid device_name: ");
+    DebugPrintln(device_name);
+    return;
+  }
+
+  uint8_t role_code = IrRoleCode(CurrentRole());
+  byte address = (byte)group;
+  byte command = (byte)(((role_code & IR_PLAYER_MASK) << IR_ROLE_SHIFT) | ((byte)player & IR_PLAYER_MASK));
   byte address_bar = ~address;
   byte command_bar = ~command;
   // IR data가 올바르게 전송되는지 확인하기 위해 _bar 변수 생성
@@ -59,6 +98,14 @@ void IrSendDataSetup(String device_name)
 
   DebugPrint("ir_send_data : ");
   DebugPrintln((unsigned long)ir_send_data, HEX);
+  DebugPrint("[IR] send role=");
+  DebugPrint(IrRoleName(role_code));
+  DebugPrint(" device=");
+  DebugPrintln(device_name);
+
+  ir_send_device_name = device_name;
+  ir_send_role_code = role_code;
+  ir_send_data_valid = true;
 }
 
 /**
@@ -66,6 +113,18 @@ void IrSendDataSetup(String device_name)
  */
 void IrSend()
 {
+  const char *device_name_value = my["device_name"].as<const char *>();
+  String device_name = device_name_value == NULL ? "" : String(device_name_value);
+  uint8_t role_code = IrRoleCode(CurrentRole());
+  if (!ir_send_data_valid || ir_send_device_name != device_name || ir_send_role_code != role_code)
+  {
+    IrSendDataSetup(device_name);
+  }
+  if (!ir_send_data_valid)
+  {
+    return;
+  }
+
   unsigned long now = millis();
   if ((long)(now - last_ir_send_ms) < (long)next_ir_interval_ms)
   {
@@ -144,78 +203,129 @@ bool ShouldSendRevivalCooldown(String device_name, unsigned long ttl_ms)
  */
 void IrReceive()
 {
-  if (irrecv.decode(&results))
+  static String cached_tag_device_name;
+  static String cached_tag_role;
+  static String cached_tag_device_state;
+  static int cached_tag_revival_time = 0;
+  static unsigned long cached_tag_expires_at = 0;
+  static String revival_help_candidate_device_name;
+  static int revival_help_count = 0;
+
+  if (!irrecv.decode(&results))
   {
-    if (sur_connect_pending)
-    {
-      irrecv.resume();
-      return;
-    }
+    return;
+  }
 
-    // NEC 32bit 프레임만 수용한다. 다른 프로토콜/노이즈/깨진 캡처가 우연히
-    // 보수(complement) 체크를 통과해 G208P208 같은 쓰레기값이 나오는 것을 막는다.
-    if (results.decode_type != NEC || results.bits != kNECBits)
-    {
-      irrecv.resume();
-      return;
-    }
+  auto decode_type = results.decode_type;
+  uint16_t bits = results.bits;
+  uint64_t value = results.value;
+  irrecv.resume();
 
-    ir_decode_data = IrDecoding((uint32_t)results.value);
-    if ((!ir_receive_error) && (ir_decode_data != "error"))
+  if (sur_connect_pending)
+  {
+    return;
+  }
+
+  // NEC 32bit 프레임만 수용한다. 다른 프로토콜/노이즈/깨진 캡처가 우연히
+  // 보수(complement) 체크를 통과해 G208P208 같은 쓰레기값이 나오는 것을 막는다.
+  if (decode_type != NEC || bits != kNECBits)
+  {
+    return;
+  }
+
+  ir_decode_data = IrDecoding((uint32_t)value);
+  if ((!ir_receive_error) && (ir_decode_data != "error"))
+  {
+    DebugPrint("IR DATA : ");
+    DebugPrintln(ir_decode_data);
+
+    String tag_device_name_text = ir_decode_data;
+    String tag_role_text;
+    String tag_device_state_text = "activate";
+    int tag_revival_time = 0;
+
+    unsigned long now = millis();
+    bool role_in_ir = ir_decode_role == IR_ROLE_TAGGER || ir_decode_role == IR_ROLE_GHOST;
+    if (role_in_ir)
     {
-      DebugPrint("IR DATA : ");
-      DebugPrintln(ir_decode_data);
-      has2wifi.Receive(ir_decode_data);
-      const char *tag_device_name = tag["device_name"].as<const char *>();
-      const char *my_device_name = my["device_name"].as<const char *>();
-      if (!TextEquals(tag_device_name, my_device_name))
+      tag_role_text = IrRoleName(ir_decode_role);
+    }
+    else
+    {
+      bool cache_valid = cached_tag_device_name == ir_decode_data &&
+                         cached_tag_expires_at != 0 &&
+                         (long)(now - cached_tag_expires_at) < 0;
+      if (!cache_valid)
       {
-        const char *my_role = my["role"].as<const char *>();
-        const char *tag_role = tag["role"].as<const char *>();
-        const char *tag_device_state = tag["device_state"].as<const char *>();
-        const char *my_device_state = my["device_state"].as<const char *>();
-
-        if (IsTaggerRole(tag_role) && !hacking)
+        unsigned long receive_start_ms = millis();
+        has2wifi.Receive(ir_decode_data);
+        unsigned long receive_elapsed_ms = millis() - receive_start_ms;
+        if (receive_elapsed_ms > 200)
         {
-          if (IsPlayerRole(my_role) && TextEquals(tag_device_state, "activate"))
-          {
-            hack_count++;
-            if (hack_count >= HACK_THRESHOLD)
-            {
-              hack_count = 0;
-              hacking = true;
-              if (IsFinalLifeTaken())
-              {
-                StartPendingRevivalVibration();
-              }
-              has2wifi.Situation(ir_decode_data, "taken");
-            }
-          }
-          else
+          DebugPrintf("[IR] Receive %s took %lu ms\n", ir_decode_data.c_str(), receive_elapsed_ms);
+        }
+
+        const char *server_tag_device_name = tag["device_name"].as<const char *>();
+        if (!TextEquals(server_tag_device_name, ir_decode_data.c_str()))
+        {
+          DebugPrint("[IR] Drop stale tag data decoded=");
+          DebugPrint(ir_decode_data);
+          DebugPrint(" server=");
+          DebugPrintln(server_tag_device_name == NULL ? "(null)" : server_tag_device_name);
+          hack_count = 0;
+          cached_tag_device_name = "";
+          cached_tag_role = "";
+          cached_tag_device_state = "";
+          cached_tag_revival_time = 0;
+          cached_tag_expires_at = 0;
+          return;
+        }
+
+        cached_tag_device_name = server_tag_device_name == NULL ? "" : server_tag_device_name;
+        const char *server_tag_role = tag["role"].as<const char *>();
+        const char *server_tag_device_state = tag["device_state"].as<const char *>();
+        cached_tag_role = server_tag_role == NULL ? "" : server_tag_role;
+        cached_tag_device_state = server_tag_device_state == NULL ? "" : server_tag_device_state;
+        cached_tag_revival_time = tag["revival_time"].as<int>();
+        cached_tag_expires_at = millis() + IR_TAG_CACHE_TTL_MS;
+      }
+
+      tag_device_name_text = cached_tag_device_name;
+      tag_role_text = cached_tag_role;
+      tag_device_state_text = cached_tag_device_state;
+      tag_revival_time = cached_tag_revival_time;
+    }
+
+    const char *tag_device_name = tag_device_name_text.c_str();
+    const char *my_device_name = my["device_name"].as<const char *>();
+    if (!TextEquals(tag_device_name, my_device_name))
+    {
+      const char *my_role = my["role"].as<const char *>();
+      const char *tag_role = tag_role_text.c_str();
+      const char *tag_device_state = tag_device_state_text.c_str();
+      const char *my_device_state = my["device_state"].as<const char *>();
+
+      if (IsTaggerRole(tag_role) && !hacking)
+      {
+        revival_help_candidate_device_name = "";
+        revival_help_count = 0;
+        if (IsPlayerRole(my_role) && TextEquals(tag_device_state, "activate"))
+        {
+          hack_count++;
+          if (hack_count >= HACK_THRESHOLD)
           {
             hack_count = 0;
-          }
-        }
-        else if (IsRevivalRole(tag_role))
-        {
-          hack_count = 0;
-          if (IsPlayerRole(my_role) && TextEquals(my_device_state, "activate") && !hacking)
-          {
-            int revival_time = tag["revival_time"].as<int>();
-            if (revival_time <= 0)
+            hacking = true;
+            if (IsFinalLifeTaken())
             {
-              revival_time = my["revival_time"].as<int>();
+              StartPendingRevivalVibration();
             }
-            if (revival_time <= 0)
+            unsigned long situation_start_ms = millis();
+            has2wifi.Situation(ir_decode_data, "taken");
+            unsigned long situation_elapsed_ms = millis() - situation_start_ms;
+            if (situation_elapsed_ms > 200)
             {
-              revival_time = DEFAULT_REVIVAL_TIME_SEC;
-            }
-
-            unsigned long ttl_ms = (unsigned long)revival_time * 1000UL;
-            if (!sur_connect_pending && ShouldSendRevivalCooldown(ir_decode_data, ttl_ms))
-            {
-              StartSurConnect();
-              has2wifi.Situation(ir_decode_data, "revival_cooldown");
+              DebugPrintf("[IR] Situation taken %s took %lu ms\n", ir_decode_data.c_str(), situation_elapsed_ms);
             }
           }
         }
@@ -224,9 +334,66 @@ void IrReceive()
           hack_count = 0;
         }
       }
+      else if (IsRevivalRole(tag_role))
+      {
+        hack_count = 0;
+        if (IsPlayerRole(my_role) && TextEquals(my_device_state, "activate") && !hacking)
+        {
+          if (revival_help_candidate_device_name == tag_device_name_text)
+          {
+            revival_help_count++;
+          }
+          else
+          {
+            revival_help_candidate_device_name = tag_device_name_text;
+            revival_help_count = 1;
+          }
+
+          if (revival_help_count < REVIVAL_HELP_THRESHOLD)
+          {
+            return;
+          }
+
+          revival_help_candidate_device_name = "";
+          revival_help_count = 0;
+
+          int revival_time = tag_revival_time;
+          if (revival_time <= 0)
+          {
+            revival_time = my["revival_time"].as<int>();
+          }
+          if (revival_time <= 0)
+          {
+            revival_time = DEFAULT_REVIVAL_TIME_SEC;
+          }
+
+          unsigned long ttl_ms = (unsigned long)revival_time * 1000UL;
+          if (!sur_connect_pending && ShouldSendRevivalCooldown(ir_decode_data, ttl_ms))
+          {
+            StartSurConnect();
+            unsigned long situation_start_ms = millis();
+            has2wifi.Situation(ir_decode_data, "revival_cooldown");
+            unsigned long situation_elapsed_ms = millis() - situation_start_ms;
+            if (situation_elapsed_ms > 200)
+            {
+              DebugPrintf("[IR] Situation revival_cooldown %s took %lu ms\n", ir_decode_data.c_str(), situation_elapsed_ms);
+            }
+          }
+        }
+        else
+        {
+          revival_help_candidate_device_name = "";
+          revival_help_count = 0;
+        }
+      }
+      else
+      {
+        hack_count = 0;
+        revival_help_candidate_device_name = "";
+        revival_help_count = 0;
+      }
     }
   }
-  irrecv.resume();
 }
 
 /**
@@ -237,6 +404,8 @@ void IrReceive()
  */
 String IrDecoding(uint32_t ir_data)
 {
+  ir_decode_role = IR_ROLE_UNKNOWN;
+
   // 0. 수신데이터 나누기
   byte address = (byte)(ir_data >> 24);
   byte address_bar = (byte)((0x00FF) & (ir_data >> 16));
@@ -246,12 +415,32 @@ String IrDecoding(uint32_t ir_data)
   String ir_decode_data;
 
   // 1. 수신데이터 오류 판별
-  if ((address | address_bar) == 0xFF)
+  if (address_bar == (byte)(~address))
   {
-    if ((command | command_bar) == 0xFF && address <= 9 && command <= 9)
+    if (command_bar == (byte)(~command) && address <= 9)
     {
+      byte role_code = command >> IR_ROLE_SHIFT;
+      byte player = command & IR_PLAYER_MASK;
+
+      // 구형 프레임(command=player)은 role 비트가 없어 서버 조회 fallback으로 처리한다.
+      // 신형 action 프레임은 G=1, T=2가 상위 4비트에 들어온다.
+      if (command <= 9)
+      {
+        player = command;
+        ir_decode_role = IR_ROLE_UNKNOWN;
+      }
+      else if ((role_code == IR_ROLE_GHOST || role_code == IR_ROLE_TAGGER) && player <= 9)
+      {
+        ir_decode_role = role_code;
+      }
+      else
+      {
+        ir_receive_error = true;
+        return "error";
+      }
+
       String group_data = (String)(address);
-      String player_data = (String)(command);
+      String player_data = (String)(player);
       ir_decode_data = String("G" + group_data + "P" + player_data);
       ir_receive_error = false;
       return ir_decode_data;
