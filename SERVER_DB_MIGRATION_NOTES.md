@@ -137,9 +137,9 @@ revival 로컬 타이머가 끝나면 펌웨어가 `pgRevival`을 잠시 보여�
 
 - `revival_time`은 남은 시간이 아니라 최대 부활 시간 기준값으로 사용한다.
 - 펌웨어는 `revival_cooldown_count` 증가분만큼만 반영한다.
-- 반영량은 `revival_reduce_time * 10 tick`이다.
-- HMI `pgGhost.vTick.val`은 10 tick/sec 기준으로 증가한다.
-- 예: `revival_reduce_time=3`이면 도움 1회마다 `30 tick`, 즉 3초가 줄어든다.
+- 반영량은 `revival_reduce_time * 1 tick`이다.
+- HMI `pgGhost.vTick.val`은 1 tick/sec 기준으로 증가한다(`pgGhost.tScreenRefresh.tim=1000ms`).
+- 예: `revival_reduce_time=3`이면 도움 1회마다 `3 tick`, 즉 3초가 줄어든다.
 
 ## HMI 결과 화면용 서버 데이터
 
