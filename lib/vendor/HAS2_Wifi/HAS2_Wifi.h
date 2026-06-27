@@ -58,6 +58,8 @@ private:
     Preferences wifi_preferences;
     unsigned long lastWifiScanMs;
     bool wifiCandidatesInitialized;
+    bool roamingEnabled = true;        // 기본 ON. SetRoamingEnabled(false)로 끄면 스캔/로밍 없이 setAutoReconnect에 맡김
+    unsigned long lastConnectedMs = 0; // roaming OFF 워치독용. 마지막으로 연결돼 있던 시각
 
     friend class HTTPUpdate;
 
@@ -78,6 +80,7 @@ public:
     HAS2_Wifi(String host, String php = "/has2.php");
 
     void SetDebugPrint(Print *debugPrint);
+    void SetRoamingEnabled(bool enabled); // false: 고정 AP 장치(스캔/로밍 off, 90s 워치독). 기본 true(현행 로밍)
 
     void Setup();
     void Setup(char *new_ssid, char *new_password);

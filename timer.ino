@@ -25,10 +25,7 @@ void TimerRun()
 
 void WifiTimerFunc()
 {
-  // has2wifi.Connect("city");
-  if (WiFi.status() != WL_CONNECTED) {
-    WiFi.begin(glove_ssid, glove_pass); // badland_auto 다이렉트 재연결 (rate는 연결 이벤트에서 재적용)
-  }
+  // (A) 매초 직접 WiFi.begin 재연결 제거: 같은 AP 재연결은 setAutoReconnect(드라이버)가 무한 담당하고,
+  // 다른 AP 로밍/워치독은 has2wifi.Loop() 내부 MaintainWifi가 처리한다. (중복·충돌 방지)
   has2wifi.Loop(DataChange);
-
 }

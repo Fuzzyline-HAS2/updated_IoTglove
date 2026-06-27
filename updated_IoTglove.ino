@@ -241,6 +241,7 @@ void IotGloveInit()
   BootSerialState("server_sync");
   has2wifi.SetDebugPrint(DebugOutput());
   has2wifi.Setup(glove_ssid, glove_pass); // direct WiFi connection
+  has2wifi.SetRoamingEnabled(false);      // 이 장치는 고정 AP 1개만 사용 → 스캔/로밍 off, 재연결은 setAutoReconnect + 90s 워치독
   DebugInit();
   Serial.print("[BOOT] telnet ready: telnet ");
   Serial.print(WiFi.localIP());

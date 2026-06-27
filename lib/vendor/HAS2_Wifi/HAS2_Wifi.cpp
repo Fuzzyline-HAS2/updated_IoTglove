@@ -17,6 +17,7 @@ static const int BADLAND_WIFI_COUNT = 3;
 static const int WIFI_MIN_RSSI = -70;
 static const unsigned long WIFI_SCAN_INTERVAL_MS = 60000;
 static const unsigned long WIFI_CONNECT_TIMEOUT_MS = 3000;
+static const unsigned long WIFI_OFFLINE_REBOOT_MS = 90000; // roaming OFF 워치독: 연속 미연결 90s 초과 시 1회 리부팅
 static const char *WIFI_PREF_NAMESPACE = "has2wifi";
 static const char *WIFI_PREF_SSID = "last_ssid";
 static const char *WIFI_PREF_PASSWORD = "last_pw";
@@ -260,8 +261,32 @@ void HAS2_Wifi::SaveLastWifi(const char *new_ssid, const char *new_password)
   wifi_preferences.end();
 }
 
+void HAS2_Wifi::SetRoamingEnabled(bool enabled)
+{
+  roamingEnabled = enabled;
+}
+
 void HAS2_Wifi::MaintainWifi()
 {
+  // roaming OFF (고정 AP 장치): 스캔/로밍 없이 setAutoReconnect(드라이버)가 같은 AP로 무한 재연결.
+  // 끊긴 채 WIFI_OFFLINE_REBOOT_MS 초과 시에만 워치독으로 1회 리부팅.
+  if (!roamingEnabled)
+  {
+    unsigned long now = millis();
+    if (WiFi.status() == WL_CONNECTED)
+    {
+      lastConnectedMs = now; // 연결 중이면 워치독 타이머 리셋
+      return;
+    }
+    if (lastConnectedMs != 0 && now - lastConnectedMs >= WIFI_OFFLINE_REBOOT_MS)
+    {
+      Serial.println("WiFi offline too long. Restart ESP (watchdog)");
+      ESP.restart();
+    }
+    return;
+  }
+
+  // roaming ON (현행): 주기 스캔 + RSSI 로밍, 1패스 실패 시 즉시 리부팅.
   ScanBadlandNetworks(false);
 
   if (WiFi.status() == WL_CONNECTED)
@@ -490,6 +515,13 @@ void HAS2_Wifi::Loop(void (*Func)(void))
  */
 void HAS2_Wifi::HttpRequest(String request, String string_request)
 {
+  // WiFi 끊김 중에는 서버 요청을 스킵한다. 어차피 못 닿으므로, 무응답 대기(기본 ~5s TCP 타임아웃)로
+  // 메인 루프가 블로킹돼 IR/진동/디스플레이가 버벅이는 것을 막는다. 연결되면 다음 호출에서 정상 재개.
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    return;
+  }
+
   //   int httpRequestCnt = 0;
   // ReRequsetHttp:
 
