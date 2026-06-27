@@ -34,7 +34,8 @@ char current_hmi_page[20];
 #define DEBUG_TELNET_PORT 23
 #define ROLE_SEND_RETRY_MS 2000
 #define BEETLE_OTA_TIMEOUT_MS 180000
-#define IR_SEND_INTERVAL_MS 100 // 태그 시 초당 더 많은 프레임을 방출해 수신측이 놓치지 않도록
+#define IR_SEND_INTERVAL_MS 150 // 기준 송신 간격. 다중 글러브 환경에서 채널 점유율을 낮춰 충돌 완화 (100→150)
+#define IR_SEND_JITTER_MS 100   // 랜덤 지터 폭. 실효 간격=150~250ms로 흔들어 글러브 간 lock-step 충돌 분산
 #define BEETLE_RX_BUFFER_SIZE 32
 #define BOOT_SERIAL_BAUD 921600 // USB 디버그 Serial 보율 (Serial.begin(921600))
 #define NEXTION_TFT_STARTUP_WINDOW_MS 1500
@@ -75,6 +76,7 @@ unsigned long version_report_next_ms = 0;
 uint8_t version_report_attempts = 0;
 uint8_t version_report_successes = 0;
 unsigned long last_ir_send_ms = 0;
+unsigned long next_ir_interval_ms = IR_SEND_INTERVAL_MS; // 다음 송신까지 실효 간격(지터 포함). 매 송신 후 재계산
 char beetle_rx_buffer[BEETLE_RX_BUFFER_SIZE];
 uint8_t beetle_rx_len = 0;
 bool beetle_rx_overflow = false;

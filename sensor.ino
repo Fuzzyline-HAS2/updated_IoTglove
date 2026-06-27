@@ -67,13 +67,17 @@ void IrSendDataSetup(String device_name)
 void IrSend()
 {
   unsigned long now = millis();
-  if ((long)(now - last_ir_send_ms) < IR_SEND_INTERVAL_MS)
+  if ((long)(now - last_ir_send_ms) < (long)next_ir_interval_ms)
   {
     return;
   }
 
   last_ir_send_ms = now;
   irsend.sendNEC(ir_send_data);
+  // 다음 간격을 매번 랜덤하게 흔든다(150~250ms). 여러 글러브가 같은 리듬으로 송신해
+  // 충돌이 고착되는 것을 막아 다중 환경 수신 성공률을 높인다.
+  // esp_random()은 RF(WiFi) 활성 시 하드웨어 RNG라 글러브마다/매번 다른 값 → 별도 randomSeed 불필요.
+  next_ir_interval_ms = IR_SEND_INTERVAL_MS + (esp_random() % (IR_SEND_JITTER_MS + 1));
 }
 
 void ClearRevivalHelpRecords()
