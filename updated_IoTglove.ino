@@ -231,7 +231,7 @@ void IotGloveInit()
   // nexInit의 bkcmd=1 / page 0 초기화 명령이 실제 디스플레이(39/33)로 전달된다.
   MySerial2.begin(9600, SERIAL_8N1, SERIAL2_RX_PIN, SERIAL2_TX_PIN);
   nexInit();                                                           // 디스플레이 세팅
-  sendCommand("dim=50"); // 백라이트 50%로 상시 고정 — baseline 전류↓로 WiFi 재연결 TX 스파이크 시 브라운아웃(화면 블랙아웃) 방지
+  sendCommand("dim=20"); // 백라이트 20%로 상시 고정 — baseline 전류↓로 WiFi 재연결 TX 스파이크 시 브라운아웃(화면 블랙아웃) 방지
   MySerial1.setTimeout(20);
   // has2wifi.Setup();     // 사무실 와이파이
   // has2wifi.Setup("city"); // 쌈지 시티 와이파이
