@@ -208,7 +208,6 @@ void IrReceive()
   static String cached_tag_device_state;
   static int cached_tag_revival_time = 0;
   static unsigned long cached_tag_expires_at = 0;
-  static String revival_help_candidate_device_name;
   static int revival_help_count = 0;
 
   if (!irrecv.decode(&results))
@@ -307,7 +306,6 @@ void IrReceive()
 
       if (IsTaggerRole(tag_role) && !hacking)
       {
-        revival_help_candidate_device_name = "";
         revival_help_count = 0;
         if (IsPlayerRole(my_role) && TextEquals(tag_device_state, "activate"))
         {
@@ -339,22 +337,14 @@ void IrReceive()
         hack_count = 0;
         if (IsPlayerRole(my_role) && TextEquals(my_device_state, "activate") && !hacking)
         {
-          if (revival_help_candidate_device_name == tag_device_name_text)
-          {
-            revival_help_count++;
-          }
-          else
-          {
-            revival_help_candidate_device_name = tag_device_name_text;
-            revival_help_count = 1;
-          }
-
+          // 송신 기기를 구분하지 않고 누적한다(tagger의 hack_count와 동일).
+          // 임계값 도달 시점의 ir_decode_data를 부활 상황 전송 대상으로 사용한다.
+          revival_help_count++;
           if (revival_help_count < REVIVAL_HELP_THRESHOLD)
           {
             return;
           }
 
-          revival_help_candidate_device_name = "";
           revival_help_count = 0;
 
           int revival_time = tag_revival_time;
@@ -382,14 +372,12 @@ void IrReceive()
         }
         else
         {
-          revival_help_candidate_device_name = "";
           revival_help_count = 0;
         }
       }
       else
       {
         hack_count = 0;
-        revival_help_candidate_device_name = "";
         revival_help_count = 0;
       }
     }
