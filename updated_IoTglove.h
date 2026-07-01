@@ -11,8 +11,8 @@ String wifi_name;
 
 bool hacking;
 int hack_count = 0;
-#define HACK_THRESHOLD 3
-#define REVIVAL_HELP_THRESHOLD 3
+#define HACK_THRESHOLD 1
+#define REVIVAL_HELP_THRESHOLD 1
 bool revival;
 bool motor_on;
 int vibe_level = 0; // 서버 vibe 값(0=끔, 1~5=진동 패턴 레벨)
