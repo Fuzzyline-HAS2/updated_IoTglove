@@ -285,6 +285,14 @@ void StopNeopixelTimer()
     }
 }
 
+void StopAllVibration()
+{
+    motor_on = false;
+    vibe_level = 0;
+    pending_revival_vibration = false;
+    MotorStop();
+}
+
 void SetMotorIntensity(int intensity)
 {
     if (intensity <= 0)
@@ -602,7 +610,7 @@ void ShowRolePage()
 
 void ShowResultPage()
 {
-    MotorStop();
+    StopAllVibration();
     sendCommand("sleep=0");
     UpdateHmiResults();
 
@@ -762,7 +770,7 @@ void HandleDeviceStateChange()
     }
     else if (TextEquals(device_state, "player_win"))
     {
-        MotorStop();
+        StopAllVibration();
         sendCommand("sleep=0"); // 슬립 상태였어도 결과 화면이 검게 남지 않도록 깨운다
         if (IsTaggerRole(role))
         {
@@ -775,7 +783,7 @@ void HandleDeviceStateChange()
     }
     else if (TextEquals(device_state, "player_lose"))
     {
-        MotorStop();
+        StopAllVibration();
         sendCommand("sleep=0"); // 슬립 상태였어도 결과 화면이 검게 남지 않도록 깨운다
         if (IsTaggerRole(role))
         {
