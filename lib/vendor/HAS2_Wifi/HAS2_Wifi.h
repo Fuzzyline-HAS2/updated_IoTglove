@@ -90,7 +90,7 @@ public:
     void ReceiveMP3(String device_name, int value);
     void ReceiveMine();
     void Send(String device_name, String column, String value);
-    void Situation(String affected_device_name, String situation);
+    void Situation(String affected_device_name, String situation, String key_device = "");
     void Loop();
     void Loop(void (*Func)(void));
     void FirmwareUpdate(String device_type, String ip_address = "172.30.1.43");
