@@ -442,10 +442,10 @@ void HAS2_Wifi::Send(String device_name, String column, String value)
  * @param affected_device_name 영향을 받는 장치
  * @param situation  상황
  */
-void HAS2_Wifi::Situation(String affected_device_name, String situation)
+void HAS2_Wifi::Situation(String affected_device_name, String situation, String key_device)
 {
-  String my_device_name = (String)(const char *)my["device_name"];
-  String string_request = server + "?request=" + "Situation" + "&table=" + situation + "&key=" + my_device_name + "&value=" + affected_device_name;
+  String key = key_device.length() ? key_device : (String)(const char *)my["device_name"];
+  String string_request = server + "?request=" + "Situation" + "&table=" + situation + "&key=" + key + "&value=" + affected_device_name;
   HttpRequest("Send", string_request);
 }
 
