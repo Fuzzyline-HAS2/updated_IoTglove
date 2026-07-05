@@ -339,7 +339,7 @@ void UpdateVibration()
     }
 
     int level = 0;
-    if (game_state == activate && IsPlayerRole(CurrentRole()))
+    if (game_state == activate && CurrentDeviceStateIs("activate") && IsPlayerRole(CurrentRole()))
     {
         if (motor_on && !location_vibe_muted && vibe_level >= 1)
         {
@@ -676,7 +676,7 @@ void HandleResultFieldChange()
 
 void HandleVibeChange()
 {
-    if (IsTaggerRole(CurrentRole()) || !CurrentGameStateIs("activate"))
+    if (IsTaggerRole(CurrentRole()) || !CurrentGameStateIs("activate") || !CurrentDeviceStateIs("activate"))
     {
         return;
     }
