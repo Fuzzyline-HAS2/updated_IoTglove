@@ -124,6 +124,13 @@ bool IsSafeOtaTag(const String &tag)
     return true;
 }
 
+bool IsResultDeviceState(const char *device_state)
+{
+    return TextEquals(device_state, "photo") ||
+           TextEquals(device_state, "player_win") ||
+           TextEquals(device_state, "player_lose");
+}
+
 bool IsGithubDeviceState(const char *device_state)
 {
     if (device_state == NULL)
@@ -339,7 +346,7 @@ void UpdateVibration()
     }
 
     int level = 0;
-    if (game_state == activate && CurrentDeviceStateIs("activate") && IsPlayerRole(CurrentRole()))
+    if (game_state == activate && !IsResultDeviceState(CurrentDeviceState()) && IsPlayerRole(CurrentRole()))
     {
         if (motor_on && !location_vibe_muted && vibe_level >= 1)
         {
@@ -676,7 +683,7 @@ void HandleResultFieldChange()
 
 void HandleVibeChange()
 {
-    if (IsTaggerRole(CurrentRole()) || !CurrentGameStateIs("activate") || !CurrentDeviceStateIs("activate"))
+    if (IsTaggerRole(CurrentRole()) || !CurrentGameStateIs("activate") || IsResultDeviceState(CurrentDeviceState()))
     {
         return;
     }
@@ -752,6 +759,7 @@ void ActivateRunOnce()
 
     DisplaySet();
     ShowRolePage();
+    HandleVibeChange(); // 진입 이전에 내려온 vibe 값을 반영
 }
 
 void HandleDeviceStateChange()
@@ -767,6 +775,7 @@ void HandleDeviceStateChange()
     if (TextEquals(device_state, "activate"))
     {
         ShowRolePage();
+        HandleVibeChange(); // 다른 device_state에 있는 동안 무시된 vibe 값을 복귀 시점에 반영
     }
     else if (TextEquals(device_state, "player_win"))
     {
