@@ -442,11 +442,11 @@ void HAS2_Wifi::Send(String device_name, String column, String value)
  * @param affected_device_name 영향을 받는 장치
  * @param situation  상황
  */
-void HAS2_Wifi::Situation(String affected_device_name, String situation, String key_device)
+bool HAS2_Wifi::Situation(String affected_device_name, String situation, String key_device)
 {
   String key = key_device.length() ? key_device : (String)(const char *)my["device_name"];
   String string_request = server + "?request=" + "Situation" + "&table=" + situation + "&key=" + key + "&value=" + affected_device_name;
-  HttpRequest("Send", string_request);
+  return HttpRequest("Send", string_request);
 }
 
 /**
@@ -513,13 +513,13 @@ void HAS2_Wifi::Loop(void (*Func)(void))
  * @param request 원하는 명령
  * @param string_request Http에게 보내는 형식 문자열
  */
-void HAS2_Wifi::HttpRequest(String request, String string_request)
+bool HAS2_Wifi::HttpRequest(String request, String string_request)
 {
   // WiFi 끊김 중에는 서버 요청을 스킵한다. 어차피 못 닿으므로, 무응답 대기(기본 ~5s TCP 타임아웃)로
   // 메인 루프가 블로킹돼 IR/진동/디스플레이가 버벅이는 것을 막는다. 연결되면 다음 호출에서 정상 재개.
   if (WiFi.status() != WL_CONNECTED)
   {
-    return;
+    return false;
   }
 
   //   int httpRequestCnt = 0;
@@ -528,6 +528,7 @@ void HAS2_Wifi::HttpRequest(String request, String string_request)
   http.begin(string_request); // 요청을 PHP로 전송
 
   int httpcode = http.GET();
+  bool ok = false;
 
   if (httpcode > 0)
   {
@@ -542,6 +543,7 @@ void HAS2_Wifi::HttpRequest(String request, String string_request)
       {
         JsonParsing(request, payload);
       }
+      ok = true;
     }
     else
     {
@@ -563,6 +565,7 @@ void HAS2_Wifi::HttpRequest(String request, String string_request)
     // }
   }
   http.end();
+  return ok;
 }
 
 /**

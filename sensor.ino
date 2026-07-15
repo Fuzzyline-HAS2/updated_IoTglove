@@ -319,11 +319,16 @@ void IrReceive()
               StartPendingRevivalVibration();
             }
             unsigned long situation_start_ms = millis();
-            has2wifi.Situation(ir_decode_data, "taken");
+            bool situation_ok = has2wifi.Situation(ir_decode_data, "taken");
             unsigned long situation_elapsed_ms = millis() - situation_start_ms;
             if (situation_elapsed_ms > 200)
             {
               DebugPrintf("[IR] Situation taken %s took %lu ms\n", ir_decode_data.c_str(), situation_elapsed_ms);
+            }
+            if (!situation_ok)
+            {
+              hacking = false;
+              StopPendingRevivalVibration();
             }
           }
         }
