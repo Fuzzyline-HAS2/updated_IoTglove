@@ -145,7 +145,6 @@ void ClearRevivalHelpRecords()
   {
     revival_help_records[i].device_name = "";
     revival_help_records[i].expires_at = 0;
-    revival_help_records[i].lives_lost = -1;
   }
 }
 
@@ -170,7 +169,6 @@ bool ShouldSendRevivalCooldown(String device_name, unsigned long ttl_ms)
     {
       revival_help_records[i].device_name = "";
       revival_help_records[i].expires_at = 0;
-      revival_help_records[i].lives_lost = -1;
     }
   }
 
@@ -195,8 +193,6 @@ bool ShouldSendRevivalCooldown(String device_name, unsigned long ttl_ms)
         DebugPrintf("[Revival] new cycle %s lives_lost %d->%d, allow help\n",
                     device_name.c_str(), revival_help_records[i].lives_lost, current_lives_lost);
         revival_help_records[i].device_name = "";
-        revival_help_records[i].expires_at = 0;
-        revival_help_records[i].lives_lost = -1;
         break; // 레코드 무효화 후 아래 신규 기록 추가로 진행
       }
       // 같은 사이클 → 차단
