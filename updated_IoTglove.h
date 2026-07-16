@@ -58,6 +58,9 @@ struct RevivalHelpRecord
 {
     String device_name;
     unsigned long expires_at;
+    // 도움 시점의 lives_lost를 저장해 새 부활 사이클을 감지한다.
+    // -1은 미기록 상태(서버 응답 실패 또는 초기값).
+    int lives_lost = -1;
 };
 
 RevivalHelpRecord revival_help_records[REVIVAL_HELP_RECORDS];

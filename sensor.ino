@@ -145,6 +145,7 @@ void ClearRevivalHelpRecords()
   {
     revival_help_records[i].device_name = "";
     revival_help_records[i].expires_at = 0;
+    revival_help_records[i].lives_lost = -1;
   }
 }
 
@@ -161,23 +162,49 @@ bool ShouldSendRevivalCooldown(String device_name, unsigned long ttl_ms)
   }
 
   unsigned long now = millis();
+
+  // 만료된 레코드 정리
   for (int i = 0; i < REVIVAL_HELP_RECORDS; i++)
   {
     if (revival_help_records[i].device_name.length() > 0 && HelpRecordExpired(now, revival_help_records[i].expires_at))
     {
       revival_help_records[i].device_name = "";
       revival_help_records[i].expires_at = 0;
+      revival_help_records[i].lives_lost = -1;
     }
   }
 
+  // 새 부활 사이클 감지 및 신규 기록 저장 모두에 lives_lost가 필요하므로 서버 조회.
+  // IR_ROLE_GHOST 프레임에서는 has2wifi.Receive가 호출되지 않으므로 여기서 직접 호출한다.
+  has2wifi.Receive(device_name);
+  const char *server_name = tag["device_name"].as<const char *>();
+  // 서버 응답이 요청한 기기와 다를 경우(stale) -1로 처리해 차단을 유지한다.
+  int current_lives_lost = TextEquals(server_name, device_name.c_str())
+                               ? tag["lives_lost"].as<int>()
+                               : -1;
+
+  // 이미 도운 유령인지 확인
   for (int i = 0; i < REVIVAL_HELP_RECORDS; i++)
   {
     if (revival_help_records[i].device_name == device_name)
     {
+      // lives_lost가 달라졌으면 부활에 성공하고 다시 태그 당한 새 사이클이므로 허용.
+      // 서버 조회 실패(current_lives_lost == -1) 시에는 기존 차단 유지.
+      if (current_lives_lost != -1 && current_lives_lost != revival_help_records[i].lives_lost)
+      {
+        DebugPrintf("[Revival] new cycle %s lives_lost %d->%d, allow help\n",
+                    device_name.c_str(), revival_help_records[i].lives_lost, current_lives_lost);
+        revival_help_records[i].device_name = "";
+        revival_help_records[i].expires_at = 0;
+        revival_help_records[i].lives_lost = -1;
+        break; // 레코드 무효화 후 아래 신규 기록 추가로 진행
+      }
+      // 같은 사이클 → 차단
       return false;
     }
   }
 
+  // 빈 슬롯 탐색. 없으면 가장 오래된 레코드를 덮어쓴다.
   int target_index = 0;
   for (int i = 0; i < REVIVAL_HELP_RECORDS; i++)
   {
@@ -195,6 +222,7 @@ bool ShouldSendRevivalCooldown(String device_name, unsigned long ttl_ms)
 
   revival_help_records[target_index].device_name = device_name;
   revival_help_records[target_index].expires_at = now + ttl_ms;
+  revival_help_records[target_index].lives_lost = current_lives_lost; // 이번 사이클의 lives_lost 기록
   return true;
 }
 
