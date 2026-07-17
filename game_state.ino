@@ -731,6 +731,12 @@ void ReadyFunc()
 void ActivateFunc()
 {
     DisplayCheck();
+
+    if (IsResultDeviceState(CurrentDeviceState()))
+    {
+        return;
+    }
+
     UpdateRevivalTimer();
     UpdateTagCaptureFlow();
 
@@ -772,6 +778,11 @@ void HandleDeviceStateChange()
         CancelBeetleOtaWait();
     }
 
+    if (IsResultDeviceState(device_state))
+    {
+        ResetActivateSideEffects(true);
+    }
+
     if (TextEquals(device_state, "activate"))
     {
         ShowRolePage();
@@ -779,7 +790,6 @@ void HandleDeviceStateChange()
     }
     else if (TextEquals(device_state, "player_win"))
     {
-        StopAllVibration();
         sendCommand("sleep=0"); // 슬립 상태였어도 결과 화면이 검게 남지 않도록 깨운다
         if (IsTaggerRole(role))
         {
@@ -792,7 +802,6 @@ void HandleDeviceStateChange()
     }
     else if (TextEquals(device_state, "player_lose"))
     {
-        StopAllVibration();
         sendCommand("sleep=0"); // 슬립 상태였어도 결과 화면이 검게 남지 않도록 깨운다
         if (IsTaggerRole(role))
         {
@@ -866,7 +875,7 @@ void DataChange()
     if (!TextEquals(my_role, cur_role))
     {
         StopSurConnect();
-        if (game_state == activate && !CurrentDeviceStateIs("photo"))
+        if (game_state == activate && !IsResultDeviceState(CurrentDeviceState()))
         {
             ShowRolePage();
         }
