@@ -86,7 +86,7 @@ void ParseOtaCommand(const String &command, String &channel, String &tag)
 
 String BuildTaggedBeetleManifestUrl(const String &channel, const String &tag)
 {
-  return String(BEETLE_OTA_RELEASE_BASE_URL) + "/" + tag + "/beetle-manifest-" + channel + ".json";
+  return String(BEETLE_OTA_RELEASE_BASE_URL) + "/" + tag + "/beetle-manifest-" + channel + "-" + GLOVE_WIFI_PROFILE + ".json";
 }
 
 String ResolveBeetleManifestUrl(const String &channel, const String &tag)
@@ -168,7 +168,7 @@ void RunBeetleOta(const String &command)
     return;
   }
 
-  bool ok = beetle_ota.checkManifest(manifest_url.c_str(), channel.c_str(), true);
+  bool ok = beetle_ota.checkManifest(manifest_url.c_str(), channel.c_str(), true, GLOVE_WIFI_PROFILE);
   if (!ok)
   {
     MySerial1.print("beetle_ota_error\n");

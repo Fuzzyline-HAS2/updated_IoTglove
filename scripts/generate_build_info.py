@@ -66,6 +66,7 @@ def main() -> None:
     parser.add_argument("--output", required=True)
     parser.add_argument("--channel", required=True)
     parser.add_argument("--env", default="ttgo-t8-v171")
+    parser.add_argument("--profile", required=True)
     parser.add_argument("--firmware-asset", default="update.bin")
     parser.add_argument("--signature-asset", default="update.sig")
     args = parser.parse_args()
@@ -82,6 +83,7 @@ def main() -> None:
         "firmware_version": fw.version,
         "firmware_version_code": fw.version_code,
         "channel": args.channel,
+        "wifi_profile": args.profile,
         "git": {
             "repository": os.environ.get("GITHUB_REPOSITORY", ""),
             "tag": os.environ.get("GITHUB_REF_NAME", ""),

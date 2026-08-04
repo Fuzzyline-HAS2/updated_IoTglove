@@ -10,6 +10,7 @@
  */
 
 #include "HAS2_Wifi.h"
+#include "secrets.h"
 
 static String _activeHost = "http://172.30.1.43";
 static Print *_has2DebugPrint = &Serial;
@@ -23,9 +24,9 @@ static const char *WIFI_PREF_SSID = "last_ssid";
 static const char *WIFI_PREF_PASSWORD = "last_pw";
 
 static HAS2_WifiCandidate badland_wifi_candidates[BADLAND_WIFI_COUNT] = {
-    {"badland_ruins", "Code3824@", -127, -127.0f, 0, 0},
-    {"badland_auto", "Code3824@", -127, -127.0f, 0, 0},
-    {"badland_shoot", "Code3824@", -127, -127.0f, 0, 0},
+    {"badland_ruins", GLOVE_WIFI_PASS, -127, -127.0f, 0, 0},
+    {"badland_auto", GLOVE_WIFI_PASS, -127, -127.0f, 0, 0},
+    {"badland_shoot", GLOVE_WIFI_PASS, -127, -127.0f, 0, 0},
 };
 
 static void HAS2DebugPrintf(const char *format, ...)

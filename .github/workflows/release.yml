@@ -9,12 +9,11 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  prepare:
     runs-on: ubuntu-latest
-    env:
-      PLATFORMIO_CORE_VERSION: "6.1.19"
-      PIO_CACHE_DIR: ${{ github.workspace }}/.platformio-cache
-
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      channel: ${{ steps.release.outputs.channel }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,48 +30,62 @@ jobs:
           CHANNEL="$(python3 scripts/firmware_metadata.py channel "${TAG}")"
           echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
           echo "channel=${CHANNEL}" >> "${GITHUB_OUTPUT}"
-          echo "manifest=manifest-${CHANNEL}.json" >> "${GITHUB_OUTPUT}"
-          echo "beetle_manifest=beetle-manifest-${CHANNEL}.json" >> "${GITHUB_OUTPUT}"
 
-      - name: Check required secrets
+      - name: Test release profile configuration
+        run: python3 -m unittest discover -s tests -v
+
+  build:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: store2-badland
+            wifi_ssid: ${{ vars.GLOVE_WIFI_SSID_STORE2_BADLAND }}
+          - profile: store2-city
+            wifi_ssid: ${{ vars.GLOVE_WIFI_SSID_STORE2_CITY }}
+          - profile: store3-error
+            wifi_ssid: ${{ vars.GLOVE_WIFI_SSID_STORE3_ERROR }}
+    env:
+      PLATFORMIO_CORE_VERSION: "6.1.19"
+      PIO_CACHE_DIR: ${{ github.workspace }}/.platformio-cache
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check required release settings
         shell: bash
         env:
           HMAC_SECRET_VALUE: ${{ secrets.HMAC_SECRET }}
-          GLOVE_WIFI_SSID_VALUE: ${{ secrets.GLOVE_WIFI_SSID }}
+          GLOVE_WIFI_SSID_VALUE: ${{ matrix.wifi_ssid }}
           GLOVE_WIFI_PASS_VALUE: ${{ secrets.GLOVE_WIFI_PASS }}
         run: |
           set -euo pipefail
-          test -n "${HMAC_SECRET_VALUE}" || (echo "Missing HMAC_SECRET" && exit 1)
-          test -n "${GLOVE_WIFI_SSID_VALUE}" || (echo "Missing GLOVE_WIFI_SSID" && exit 1)
-          test -n "${GLOVE_WIFI_PASS_VALUE}" || (echo "Missing GLOVE_WIFI_PASS" && exit 1)
+          test -n "${HMAC_SECRET_VALUE}" || (echo "Missing HMAC_SECRET secret" && exit 1)
+          test -n "${GLOVE_WIFI_PASS_VALUE}" || (echo "Missing GLOVE_WIFI_PASS secret" && exit 1)
+          test -n "${GLOVE_WIFI_SSID_VALUE}" || (echo "Missing Wi-Fi SSID repository variable for ${{ matrix.profile }}" && exit 1)
 
-      - name: Generate secrets.h
+      - name: Generate profile secrets header
         shell: bash
         env:
           HMAC_SECRET_VALUE: ${{ secrets.HMAC_SECRET }}
-          GLOVE_WIFI_SSID_VALUE: ${{ secrets.GLOVE_WIFI_SSID }}
+          GLOVE_WIFI_SSID_VALUE: ${{ matrix.wifi_ssid }}
           GLOVE_WIFI_PASS_VALUE: ${{ secrets.GLOVE_WIFI_PASS }}
+        run: python3 scripts/release_profiles.py write-secrets --profile "${{ matrix.profile }}"
+
+      - name: Resolve artifact names
+        shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import os
-          import pathlib
-
-          def c_string(name):
-              value = os.environ[name]
-              return value.replace("\\", "\\\\").replace('"', '\\"')
-
-          out = pathlib.Path("secrets.h")
-          out.write_text(
-              "#ifndef _SECRETS_H_\n"
-              "#define _SECRETS_H_\n\n"
-              f"#define HMAC_SECRET \"{c_string('HMAC_SECRET_VALUE')}\"\n"
-              f"#define GLOVE_WIFI_SSID \"{c_string('GLOVE_WIFI_SSID_VALUE')}\"\n"
-              f"#define GLOVE_WIFI_PASS \"{c_string('GLOVE_WIFI_PASS_VALUE')}\"\n\n"
-              "#endif\n",
-              encoding="utf-8",
-          )
-          PY
+          while IFS='=' read -r name value; do
+            echo "${name^^}=${value}" >> "${GITHUB_ENV}"
+          done < <(python3 scripts/release_profiles.py assets \
+            --profile "${{ matrix.profile }}" \
+            --channel "${{ needs.prepare.outputs.channel }}")
 
       - name: Restore PlatformIO package cache
         uses: actions/cache@v4
@@ -98,8 +111,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-
-      - name: Build firmware
+      - name: Build TTGO and Beetle firmware
         shell: bash
         run: |
           set -euo pipefail
@@ -121,73 +133,112 @@ jobs:
         shell: bash
         run: sudo chown -R "$(id -u):$(id -g)" "${PIO_CACHE_DIR}" || true
 
-      - name: Create release artifacts
+      - name: Create profile release artifacts
         shell: bash
         env:
           HMAC_SECRET: ${{ secrets.HMAC_SECRET }}
-          CHANNEL: ${{ steps.release.outputs.channel }}
-          TAG: ${{ steps.release.outputs.tag }}
-          MANIFEST: ${{ steps.release.outputs.manifest }}
-          BEETLE_MANIFEST: ${{ steps.release.outputs.beetle_manifest }}
+          CHANNEL: ${{ needs.prepare.outputs.channel }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          PROFILE: ${{ matrix.profile }}
         run: |
           set -euo pipefail
           mkdir -p dist
 
-          cp ".pio/build/ttgo-t8-v171/firmware.bin" "dist/update.bin"
-          cp ".pio/build/beetle-c3-location/firmware.bin" "dist/beetle-update.bin"
+          cp ".pio/build/ttgo-t8-v171/firmware.bin" "dist/${TTGO_FIRMWARE}"
+          cp ".pio/build/beetle-c3-location/firmware.bin" "dist/${BEETLE_FIRMWARE}"
 
-          python3 scripts/sign_firmware.py --firmware dist/update.bin --out dist/update.sig
-          python3 scripts/sign_firmware.py --firmware dist/beetle-update.bin --out dist/beetle-update.sig
+          python3 scripts/sign_firmware.py \
+            --firmware "dist/${TTGO_FIRMWARE}" \
+            --out "dist/${TTGO_SIGNATURE}"
+          python3 scripts/sign_firmware.py \
+            --firmware "dist/${BEETLE_FIRMWARE}" \
+            --out "dist/${BEETLE_SIGNATURE}"
 
           python3 scripts/generate_build_info.py \
-            --firmware dist/update.bin \
-            --signature dist/update.sig \
-            --output dist/build-info.json \
+            --firmware "dist/${TTGO_FIRMWARE}" \
+            --signature "dist/${TTGO_SIGNATURE}" \
+            --output "dist/${TTGO_BUILD_INFO}" \
             --channel "${CHANNEL}" \
+            --profile "${PROFILE}" \
             --env ttgo-t8-v171 \
-            --firmware-asset update.bin \
-            --signature-asset update.sig
+            --firmware-asset "${TTGO_FIRMWARE}" \
+            --signature-asset "${TTGO_SIGNATURE}"
           python3 scripts/generate_build_info.py \
-            --firmware dist/beetle-update.bin \
-            --signature dist/beetle-update.sig \
-            --output dist/beetle-build-info.json \
+            --firmware "dist/${BEETLE_FIRMWARE}" \
+            --signature "dist/${BEETLE_SIGNATURE}" \
+            --output "dist/${BEETLE_BUILD_INFO}" \
             --channel "${CHANNEL}" \
+            --profile "${PROFILE}" \
             --env beetle-c3-location \
-            --firmware-asset beetle-update.bin \
-            --signature-asset beetle-update.sig
+            --firmware-asset "${BEETLE_FIRMWARE}" \
+            --signature-asset "${BEETLE_SIGNATURE}"
 
           python3 scripts/make_manifest.py \
             --repo "${GITHUB_REPOSITORY}" \
             --tag "${TAG}" \
             --channel "${CHANNEL}" \
-            --firmware dist/update.bin \
-            --signature dist/update.sig \
-            --build-info dist/build-info.json \
-            --firmware-asset update.bin \
-            --signature-asset update.sig \
-            --build-info-asset build-info.json \
-            --out "dist/${MANIFEST}"
+            --profile "${PROFILE}" \
+            --firmware "dist/${TTGO_FIRMWARE}" \
+            --signature "dist/${TTGO_SIGNATURE}" \
+            --build-info "dist/${TTGO_BUILD_INFO}" \
+            --firmware-asset "${TTGO_FIRMWARE}" \
+            --signature-asset "${TTGO_SIGNATURE}" \
+            --build-info-asset "${TTGO_BUILD_INFO}" \
+            --out "dist/${TTGO_MANIFEST}"
           python3 scripts/make_manifest.py \
             --repo "${GITHUB_REPOSITORY}" \
             --tag "${TAG}" \
             --channel "${CHANNEL}" \
-            --firmware dist/beetle-update.bin \
-            --signature dist/beetle-update.sig \
-            --build-info dist/beetle-build-info.json \
-            --firmware-asset beetle-update.bin \
-            --signature-asset beetle-update.sig \
-            --build-info-asset beetle-build-info.json \
+            --profile "${PROFILE}" \
+            --firmware "dist/${BEETLE_FIRMWARE}" \
+            --signature "dist/${BEETLE_SIGNATURE}" \
+            --build-info "dist/${BEETLE_BUILD_INFO}" \
+            --firmware-asset "${BEETLE_FIRMWARE}" \
+            --signature-asset "${BEETLE_SIGNATURE}" \
+            --build-info-asset "${BEETLE_BUILD_INFO}" \
             --out "dist/${BEETLE_MANIFEST}"
-          ls -l dist
+
+          find dist -maxdepth 1 -type f -print | sort
+
+      - name: Upload profile artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.profile }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    needs:
+      - prepare
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all profile artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: firmware-*
+          path: dist
+          merge-multiple: true
+
+      - name: Verify complete artifact set
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find dist -maxdepth 1 -type f | wc -l | tr -d ' ')" -eq 24
+          find dist -maxdepth 1 -type f -print | sort
 
       - name: Upload GitHub Release assets
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          CHANNEL: ${{ steps.release.outputs.channel }}
-          TAG: ${{ steps.release.outputs.tag }}
-          MANIFEST: ${{ steps.release.outputs.manifest }}
-          BEETLE_MANIFEST: ${{ steps.release.outputs.beetle_manifest }}
+          CHANNEL: ${{ needs.prepare.outputs.channel }}
+          TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           set -euo pipefail
           if ! gh release view "${TAG}" >/dev/null 2>&1; then
@@ -199,16 +250,7 @@ jobs:
             fi
             gh release create "${TAG}" "${RELEASE_FLAGS[@]}"
           fi
-          gh release upload "${TAG}" \
-            dist/update.bin \
-            dist/update.sig \
-            "dist/${MANIFEST}" \
-            dist/build-info.json \
-            dist/beetle-update.bin \
-            dist/beetle-update.sig \
-            "dist/${BEETLE_MANIFEST}" \
-            dist/beetle-build-info.json \
-            --clobber
+          gh release upload "${TAG}" dist/* --clobber
 
           if [ "${CHANNEL}" != "prd" ]; then
             ALIAS_TAG="${CHANNEL}-latest"
@@ -228,14 +270,4 @@ jobs:
                 --prerelease
             fi
 
-            gh release upload "${ALIAS_TAG}" \
-              dist/update.bin \
-              dist/update.sig \
-              "dist/${MANIFEST}" \
-              dist/build-info.json \
-              dist/beetle-update.bin \
-              dist/beetle-update.sig \
-              "dist/${BEETLE_MANIFEST}" \
-              dist/beetle-build-info.json \
-              --clobber
-          fi
+            gh release upload "${ALIAS_TAG}" dist/* --clobber

@@ -179,7 +179,7 @@ void ParseOtaDeviceState(const char *device_state, String &channel, String &tag)
 
 String BuildTaggedOtaManifestUrl(const String &channel, const String &tag)
 {
-    return String(OTA_RELEASE_BASE_URL) + "/" + tag + "/manifest-" + channel + ".json";
+    return String(OTA_RELEASE_BASE_URL) + "/" + tag + "/manifest-" + channel + "-" + GLOVE_WIFI_PROFILE + ".json";
 }
 
 String ResolveOtaManifestUrl(const String &channel, const String &tag)
@@ -228,7 +228,7 @@ void RunManifestOta(const String &channel, const String &tag)
     DebugPrint(" tag=");
     DebugPrintln(tag.length() > 0 ? tag : "(latest)");
 
-    if (!ota.checkManifest(manifest_url.c_str(), channel.c_str(), true))
+    if (!ota.checkManifest(manifest_url.c_str(), channel.c_str(), true, GLOVE_WIFI_PROFILE))
     {
         SendOtaError();
     }

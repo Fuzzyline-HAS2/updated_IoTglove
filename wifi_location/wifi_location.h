@@ -40,10 +40,14 @@
 #define BEETLE_OTA_MANIFEST_URL ""
 #endif
 
+#ifndef GLOVE_WIFI_PROFILE
+#error "GLOVE_WIFI_PROFILE must be defined in secrets.h"
+#endif
+
 #define BEETLE_OTA_RELEASE_BASE_URL "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/download"
-#define BEETLE_OTA_PRD_MANIFEST_URL "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/latest/download/beetle-manifest-prd.json"
-#define BEETLE_OTA_DEV_MANIFEST_URL "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/download/dev-latest/beetle-manifest-dev.json"
-#define BEETLE_OTA_RC_MANIFEST_URL "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/download/rc-latest/beetle-manifest-rc.json"
+#define BEETLE_OTA_PRD_MANIFEST_URL "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/latest/download/beetle-manifest-prd-" GLOVE_WIFI_PROFILE ".json"
+#define BEETLE_OTA_DEV_MANIFEST_URL "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/download/dev-latest/beetle-manifest-dev-" GLOVE_WIFI_PROFILE ".json"
+#define BEETLE_OTA_RC_MANIFEST_URL "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/download/rc-latest/beetle-manifest-rc-" GLOVE_WIFI_PROFILE ".json"
 
 #define STRINGIFY_VALUE(value) #value
 #define STRINGIFY(value) STRINGIFY_VALUE(value)
