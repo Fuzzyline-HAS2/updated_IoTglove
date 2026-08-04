@@ -271,3 +271,4 @@ jobs:
             fi
 
             gh release upload "${ALIAS_TAG}" dist/* --clobber
+          fi
