@@ -153,12 +153,16 @@ void BeetleScanWifi();
 #include <esp_wifi.h>
 
 // WiFi direct connection target. Keep actual values in local secrets.h.
+#ifndef GLOVE_WIFI_PROFILE
+#error "GLOVE_WIFI_PROFILE must be defined in secrets.h"
+#endif
+
 #ifndef GLOVE_WIFI_SSID
-#define GLOVE_WIFI_SSID "badland_shoot"
+#error "GLOVE_WIFI_SSID must be defined in secrets.h"
 #endif
 
 #ifndef GLOVE_WIFI_PASS
-#define GLOVE_WIFI_PASS "Code3824@"
+#error "GLOVE_WIFI_PASS must be defined in secrets.h"
 #endif
 
 static char glove_ssid[] = GLOVE_WIFI_SSID;
@@ -182,14 +186,14 @@ HAS2_Wifi has2wifi("http://172.30.1.43");
 #endif
 
 #define OTA_RELEASE_BASE_URL "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/download"
-#define OTA_PRD_MANIFEST_URL "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/latest/download/manifest-prd.json"
-#define OTA_DEV_MANIFEST_URL "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/download/dev-latest/manifest-dev.json"
-#define OTA_RC_MANIFEST_URL "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/download/rc-latest/manifest-rc.json"
+#define OTA_PRD_MANIFEST_URL "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/latest/download/manifest-prd-" GLOVE_WIFI_PROFILE ".json"
+#define OTA_DEV_MANIFEST_URL "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/download/dev-latest/manifest-dev-" GLOVE_WIFI_PROFILE ".json"
+#define OTA_RC_MANIFEST_URL "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/download/rc-latest/manifest-rc-" GLOVE_WIFI_PROFILE ".json"
 
 SecureOTA ota(
-  "https://raw.githubusercontent.com/Fuzzyline-HAS2/updated_IoTglove/main/update.bin",
+  "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/latest/download/update-" GLOVE_WIFI_PROFILE ".bin",
   "https://raw.githubusercontent.com/Fuzzyline-HAS2/updated_IoTglove/main/version.txt",
-  "https://raw.githubusercontent.com/Fuzzyline-HAS2/updated_IoTglove/main/update.sig",
+  "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/latest/download/update-" GLOVE_WIFI_PROFILE ".sig",
   HMAC_SECRET,
   FIRMWARE_VERSION_CODE
 );

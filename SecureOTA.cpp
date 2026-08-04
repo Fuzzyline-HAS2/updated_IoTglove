@@ -395,7 +395,10 @@ bool SecureOTA::check()
   return _execOTA(_firmware_url, _signature_url, 0);
 }
 
-bool SecureOTA::checkManifest(const char *manifest_url, const char *expected_channel, bool allow_downgrade)
+bool SecureOTA::checkManifest(const char *manifest_url,
+                              const char *expected_channel,
+                              bool allow_downgrade,
+                              const char *expected_profile)
 {
   _println("[OTA] manifest check");
   if (WiFi.status() != WL_CONNECTED)
@@ -419,6 +422,7 @@ bool SecureOTA::checkManifest(const char *manifest_url, const char *expected_cha
   }
 
   const char *channel = manifest["channel"] | "";
+  const char *wifiProfile = manifest["wifi_profile"] | "";
   const char *version = manifest["version"] | "";
   int versionCode = manifest["version_code"] | -1;
   const char *firmwareUrl = manifest["firmware_url"] | "";
@@ -428,6 +432,12 @@ bool SecureOTA::checkManifest(const char *manifest_url, const char *expected_cha
   if (expected_channel != nullptr && expected_channel[0] != '\0' && strcmp(channel, expected_channel) != 0)
   {
     _printf("[OTA] channel mismatch: %s != %s\n", channel, expected_channel);
+    return false;
+  }
+
+  if (expected_profile != nullptr && expected_profile[0] != '\0' && strcmp(wifiProfile, expected_profile) != 0)
+  {
+    _printf("[OTA] WiFi profile mismatch: %s != %s\n", wifiProfile, expected_profile);
     return false;
   }
 

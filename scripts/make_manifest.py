@@ -15,6 +15,7 @@ def main() -> None:
     parser.add_argument("--repo", required=True, help="owner/repo")
     parser.add_argument("--tag", required=True)
     parser.add_argument("--channel", default="")
+    parser.add_argument("--profile", required=True)
     parser.add_argument("--firmware", required=True)
     parser.add_argument("--signature", required=True)
     parser.add_argument("--build-info", required=True)
@@ -32,6 +33,7 @@ def main() -> None:
 
     manifest = {
         "channel": channel,
+        "wifi_profile": args.profile,
         "version": firmware.version,
         "version_code": firmware.version_code,
         "firmware_url": release_url(args.repo, args.tag, args.firmware_asset),

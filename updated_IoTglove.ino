@@ -16,6 +16,7 @@
 
 const char FIRMWARE_BUILD_ID[] =
   "firmware=" FIRMWARE_VERSION
+  ";wifi_profile=" GLOVE_WIFI_PROFILE
   ";code=" STRINGIFY(FIRMWARE_VERSION_CODE)
   ";git=" BUILD_GIT_COMMIT
   ";esp32=" BUILD_ESP32_CORE

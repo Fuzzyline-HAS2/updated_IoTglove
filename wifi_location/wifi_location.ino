@@ -7,6 +7,7 @@
 const char BEETLE_BUILD_ID[] =
     "beetle=1"
     ";firmware=" FIRMWARE_VERSION
+    ";wifi_profile=" GLOVE_WIFI_PROFILE
     ";code=" STRINGIFY(FIRMWARE_VERSION_CODE);
 
 HardwareSerial MySerial1(1);
@@ -26,9 +27,9 @@ unsigned long last_ble_eval_ms = 0;
 bool ble_scan_segment_done = false;
 
 SecureOTA beetle_ota(
-    "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/latest/download/beetle-update.bin",
+    "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/latest/download/beetle-update-" GLOVE_WIFI_PROFILE ".bin",
     "https://raw.githubusercontent.com/Fuzzyline-HAS2/updated_IoTglove/main/version.txt",
-    "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/latest/download/beetle-update.sig",
+    "https://github.com/Fuzzyline-HAS2/updated_IoTglove/releases/latest/download/beetle-update-" GLOVE_WIFI_PROFILE ".sig",
     HMAC_SECRET,
     FIRMWARE_VERSION_CODE);
 
