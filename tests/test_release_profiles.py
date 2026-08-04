@@ -5,6 +5,7 @@ import unittest
 
 from scripts.release_profiles import (
     PROFILES,
+    PROFILE_SERVERS,
     PROFILE_SSIDS,
     asset_names,
     c_string,
@@ -47,6 +48,7 @@ class ReleaseProfilesTest(unittest.TestCase):
         self.assertIn('#define GLOVE_WIFI_PROFILE "store2-city"', text)
         self.assertIn('#define GLOVE_WIFI_SSID "bar"', text)
         self.assertIn('#define GLOVE_WIFI_PASS "password\\\\value"', text)
+        self.assertIn('#define GLOVE_SERVER_HOST "http://172.30.1.44"', text)
         self.assertEqual(c_string('bar"room\\ap'), '"bar\\\"room\\\\ap"')
 
     def test_profile_ssid_mapping_is_exact(self):
@@ -68,9 +70,61 @@ class ReleaseProfilesTest(unittest.TestCase):
                     hmac_secret="hmac-secret",
                 )
 
+    def test_profile_server_mapping_is_exact(self):
+        self.assertEqual(
+            PROFILE_SERVERS,
+            {
+                "store2-badland": "http://172.30.1.43",
+                "store2-city": "http://172.30.1.44",
+                "store3-error": "http://172.30.1.43",
+            },
+        )
+
+    def test_profile_servers_keep_substring_parsable_form(self):
+        # HAS2_Wifi.cpp calls HOST_NAME.substring(7) to recover the bare IP, so
+        # the scheme must be exactly "http://" and no trailing slash may follow.
+        for profile, host in PROFILE_SERVERS.items():
+            self.assertTrue(host.startswith("http://"), profile)
+            self.assertFalse(host.endswith("/"), profile)
+            self.assertTrue(host[7:], profile)
+
+    def test_every_profile_has_a_server(self):
+        self.assertEqual(set(PROFILE_SERVERS), set(PROFILES))
+
     def test_unknown_profile_is_rejected(self):
         with self.assertRaises(ValueError):
             asset_names("prd", "unknown")
+
+    def test_firmware_reads_server_host_from_secrets(self):
+        header = (ROOT / "updated_IoTglove.h").read_text(encoding="utf-8")
+        self.assertIn("#ifndef GLOVE_SERVER_HOST", header)
+        self.assertIn("HAS2_Wifi has2wifi(GLOVE_SERVER_HOST)", header)
+
+        sensor = (ROOT / "sensor.ino").read_text(encoding="utf-8")
+        self.assertIn("GLOVE_SERVER_HOST", sensor)
+
+        main = (ROOT / "updated_IoTglove.ino").read_text(encoding="utf-8")
+        self.assertIn("GLOVE_SERVER_HOST", main)
+
+    def test_server_host_is_not_hardcoded_in_firmware_sources(self):
+        # The vendored HAS2_Wifi library keeps unreachable defaults on purpose and
+        # secrets.example.h is where GLOVE_SERVER_HOST is defined; every other
+        # tracked firmware source must go through the macro.
+        suffixes = {".cpp", ".h", ".ino"}
+        exempt = {"secrets.example.h"}
+        tracked = subprocess.check_output(
+            ["git", "ls-files"], cwd=ROOT, text=True
+        ).splitlines()
+        for relative_path in tracked:
+            if relative_path.startswith("lib/vendor/") or relative_path in exempt:
+                continue
+            path = ROOT / relative_path
+            if path.suffix in suffixes:
+                self.assertNotIn(
+                    "172.30.1.",
+                    path.read_text(encoding="utf-8"),
+                    f"Hardcoded server address found in {relative_path}",
+                )
 
     def test_firmware_routes_ota_by_compiled_profile(self):
         ttgo = (ROOT / "game_state.ino").read_text(encoding="utf-8")

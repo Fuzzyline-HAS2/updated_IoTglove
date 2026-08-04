@@ -14,6 +14,14 @@ PROFILE_SSIDS = {
     "store2-city": "bar",
     "store3-error": "badland_shoot",
 }
+# HAS2 server per profile. Not a secret, so the table is the single source of
+# truth instead of a GitHub Actions variable. Keep the "http://" scheme and no
+# trailing slash: HAS2_Wifi.cpp recovers the bare IP with HOST_NAME.substring(7).
+PROFILE_SERVERS = {
+    "store2-badland": "http://172.30.1.43",
+    "store2-city": "http://172.30.1.44",
+    "store3-error": "http://172.30.1.43",
+}
 PROFILES = tuple(PROFILE_SSIDS)
 
 
@@ -60,7 +68,8 @@ def write_secrets_header(
         f"#define HMAC_SECRET {c_string(hmac_secret)}\n"
         f"#define GLOVE_WIFI_PROFILE {c_string(profile)}\n"
         f"#define GLOVE_WIFI_SSID {c_string(ssid)}\n"
-        f"#define GLOVE_WIFI_PASS {c_string(wifi_password)}\n\n"
+        f"#define GLOVE_WIFI_PASS {c_string(wifi_password)}\n"
+        f"#define GLOVE_SERVER_HOST {c_string(PROFILE_SERVERS[profile])}\n\n"
         "#endif\n",
         encoding="utf-8",
     )

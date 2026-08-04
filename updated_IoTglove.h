@@ -165,6 +165,12 @@ void BeetleScanWifi();
 #error "GLOVE_WIFI_PASS must be defined in secrets.h"
 #endif
 
+// HAS2 server for this profile. Must keep the "http://" scheme and no trailing
+// slash: HAS2_Wifi recovers the bare IP with HOST_NAME.substring(7).
+#ifndef GLOVE_SERVER_HOST
+#error "GLOVE_SERVER_HOST must be defined in secrets.h"
+#endif
+
 static char glove_ssid[] = GLOVE_WIFI_SSID;
 static char glove_pass[] = GLOVE_WIFI_PASS;
 
@@ -174,7 +180,7 @@ void StartVersionReport();
 void UpdateVersionReport();
 bool ReportDeviceVersions();
 
-HAS2_Wifi has2wifi("http://172.30.1.43");
+HAS2_Wifi has2wifi(GLOVE_SERVER_HOST);
 
 //================================ OTA ==================================
 #ifndef OTA_CHANNEL

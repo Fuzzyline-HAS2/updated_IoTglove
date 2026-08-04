@@ -166,6 +166,20 @@ SSID는 다음 GitHub Actions repository variable로 관리한다.
 세 프로필은 같은 `GLOVE_WIFI_PASS` secret을 공유한다.
 릴리즈는 repository variable 값이 위 표의 SSID와 정확히 일치하지 않으면 실패한다.
 
+HAS2 서버 주소는 비밀이 아니므로 repository variable 없이
+`scripts/release_profiles.py`의 `PROFILE_SERVERS` 테이블이 단일 출처다.
+이 값은 `GLOVE_SERVER_HOST`로 `secrets.h`에 기록된다.
+
+| profile | `GLOVE_SERVER_HOST` |
+| --- | --- |
+| `store2-badland` | `http://172.30.1.43` |
+| `store2-city` | `http://172.30.1.44` |
+| `store3-error` | `http://172.30.1.43` |
+
+`GLOVE_SERVER_HOST`는 `http://` 스킴을 포함하고 후행 슬래시가 없어야 한다.
+`HAS2_Wifi`가 `HOST_NAME.substring(7)`로 IP를 잘라내므로 `https://`를 쓰면
+조용히 잘못된 주소가 된다.
+
 ## Server Contract
 
 Current OTA policy: the server DB only changes `device_state` to `github`. Ignore any older references to `ota_channel` or `ota_manifest_url`; those are now firmware compile-time constants.
