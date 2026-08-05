@@ -174,6 +174,16 @@ class ReleaseProfilesTest(unittest.TestCase):
         self.assertIn("#define HAS3_ROOM_COUNT 6", text)
         self.assertIn("#ifndef GLOVE_PROFILE_ID", text)
 
+    def test_location_protocol_header_is_self_sufficient(self):
+        # wifi_location.h includes location_protocol.h before secrets.h, so the
+        # #error guard only holds if this header pulls secrets.h in itself.
+        text = (ROOT / "location_protocol.h").read_text(encoding="utf-8")
+        self.assertIn('#include "secrets.h"', text)
+        self.assertLess(
+            text.index('#include "secrets.h"'),
+            text.index("#ifndef GLOVE_PROFILE_ID"),
+        )
+
     def test_room_mapping_is_derived_from_the_table_only(self):
         # The old hardcoded switch and prefix whitelist must stay gone: the room
         # table is the single place a room or its initial is declared.

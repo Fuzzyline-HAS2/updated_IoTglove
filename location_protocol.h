@@ -3,6 +3,11 @@
 
 #include <Arduino.h>
 
+// GLOVE_PROFILE_ID selects the room table below, so this header must not depend
+// on the includer having pulled in secrets.h first. wifi_location.h includes
+// this header before secrets.h, which would otherwise trip the #error guard.
+#include "secrets.h"
+
 #define HAS3_ROOM_COUNT 6
 #define HAS3_UNKNOWN_ROOM "unknown"
 #define HAS3_LOCAL_NAME_PREFIX "HAS3:"

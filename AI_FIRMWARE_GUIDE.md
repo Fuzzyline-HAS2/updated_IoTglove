@@ -208,6 +208,14 @@ BLE 장치 이름은 방 이름의 첫 글자를 대문자로 접두에 갖는�
 위 표는 `tests/test_release_profiles.py`가 `location_protocol.h`를 파싱해
 `PROFILE_ROOMS`와 일치하는지 검증한다.
 
+`GLOVE_WIFI_PROFILE`과 `GLOVE_PROFILE_ID`를 교차 검증하는 장치는 없다. CI는 둘을
+같은 테이블에서 생성하므로 어긋날 수 없지만, 손으로 고친 `secrets.h`는 city의
+SSID/서버에 badland 방 목록을 짝지어도 그대로 빌드된다. 두 값은 항상 함께 고친다.
+
+`location_protocol.h`는 `secrets.h`를 직접 include한다. `wifi_location.h`가
+`location_protocol.h`를 `secrets.h`보다 먼저 include하므로, 헤더가 자립하지
+않으면 Beetle 빌드에서 `GLOVE_PROFILE_ID` `#error`가 발동한다.
+
 ## Server Contract
 
 Current OTA policy: the server DB only changes `device_state` to `github`. Ignore any older references to `ota_channel` or `ota_manifest_url`; those are now firmware compile-time constants.
