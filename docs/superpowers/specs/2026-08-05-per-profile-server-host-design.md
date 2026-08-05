@@ -1,4 +1,4 @@
-# 프로필별 서버 주소 분리 설계
+# 프로필별 서버 주소 / BLE 방 이름 분리 설계
 
 - 날짜: 2026-08-05
 - 대상 브랜치: `codex/release-v1.2.4-dev.26`
@@ -76,6 +76,55 @@ Beetle(`beetle-c3-location`)은 HAS2 서버에 접속하지 않고 GitHub만 사
 `GLOVE_SERVER_HOST`가 필요 없다. `secrets.h`를 공유하는 구조상 양쪽 env에
 정의되지만 Beetle 코드에서 참조하지 않아 무해하다.
 
+## BLE 방 이름 (2차 범위)
+
+매장마다 BLE location 방 이름이 다르다. `location_protocol.h`의 `HAS3_ROOMS`가
+store3 값으로 고정되어 있어 프로필별 테이블로 바꾼다.
+
+| profile | `GLOVE_PROFILE_ID` | rooms | prefixes |
+| --- | --- | --- | --- |
+| `store2-badland` | 1 | prison, ruins, checkpoint, shoot, warehouse, academy | P R C S W A |
+| `store2-city` | 2 | house, office, bar, gunshop, foodcourt, academy | H O B G F A |
+| `store3-error` | 3 | bamboo, toilet, sleep, underground, hallway, crack | B T S U H C |
+
+### 관리 구조
+
+BLE 장치 이름은 방 이름의 첫 글자를 대문자로 접두에 갖는다(`bar itembox 1` ->
+`HAS3:BI1`). 따라서 prefix는 `HAS3_ROOMS[i][0]`에서 파생할 수 있고, 관리 지점이
+방 목록 하나로 줄어든다. 기존에는 방 목록, `Has3RoomFromDeviceName`의 `switch`,
+`Has3IsDevicePrefix`의 whitelist 세 곳을 동시에 맞춰야 했다.
+
+`GLOVE_WIFI_PROFILE`은 문자열 리터럴이라 전처리기로 비교할 수 없으므로,
+`release_profiles.py`가 숫자 `GLOVE_PROFILE_ID`를 `secrets.h`에 함께 쓰고
+`location_protocol.h`가 `#if`로 테이블을 고른다.
+
+### 제약
+
+- 한 프로필 안에서 방 이름 첫 글자가 유일해야 한다.
+- 세 프로필의 방 개수가 같아야 한다. `HAS3_ROOM_COUNT`는 두 바이너리가 공유하는
+  컴파일 타임 배열 크기다. `academy` 추가로 세 프로필 모두 6개가 되어 기존
+  `HAS3_ROOM_COUNT 6`이 유지되고, Beetle 스코어링 코드는 무수정이다.
+- 프로필 간 prefix 충돌은 의도된 것이다: `B`는 city의 `bar`, store3의 `bamboo`.
+  `C`(checkpoint/crack), `H`(house/hallway), `S`(shoot/sleep)도 같다.
+  **잘못된 프로필로 구운 장비는 방 이름을 조용히 틀리게 보고하며 검출 수단이 없다.**
+
+### 변경 파일 (2차)
+
+| 파일 | 변경 |
+| --- | --- |
+| `scripts/release_profiles.py` | `PROFILE_IDS`, `PROFILE_ROOMS` 테이블, `secrets.h`에 `GLOVE_PROFILE_ID` 출력 |
+| `location_protocol.h` | `HAS3_PROFILE_*` 상수, 프로필별 `HAS3_ROOMS`, `Has3RoomIndexFromPrefix` 도입, `switch`/prefix whitelist 제거, `GLOVE_PROFILE_ID` `#error` 가드 |
+| `secrets.example.h` | `GLOVE_PROFILE_ID` |
+| `tests/test_release_profiles.py` | 헤더 파싱해 `PROFILE_ROOMS`/`PROFILE_IDS`와 일치 검증, 첫 글자 유일성, 방 개수 동일성 |
+| `AI_FIRMWARE_GUIDE.md` | BLE Location Rooms 절 |
+
+### 범위에서 제외 (2차)
+
+`HAS3_*` 네이밍은 store3 유래이나 이제 전 매장 공용이다. 리네임은 다수 파일에
+걸치므로 이번 범위에서 제외한다.
+
+`academy`는 신규 방이므로 해당 BLE 비컨 설치가 별도로 필요하다.
+
 ## 검증 기준
 
 1. `python3 -m unittest tests.test_release_profiles` 통과
@@ -85,3 +134,6 @@ Beetle(`beetle-c3-location`)은 HAS2 서버에 접속하지 않고 GitHub만 사
    "`.43`이 0개"를 기준으로 삼지 않는다
 4. `GLOVE_SERVER_HOST`를 뺀 `secrets.h`로 빌드하면 `#error`로 실패
 5. 실제 동작 확인은 부팅 시리얼의 `[BOOT] server=http://172.30.1.44/has2.php`
+6. `GLOVE_PROFILE_ID`를 뺀 `secrets.h`로 빌드하면 `#error`로 실패
+7. TTGO/Beetle 바이너리에 해당 프로필의 방 이름 6개가 모두 있고, 다른 프로필의
+   방 이름(예: store2-city 빌드의 `bamboo`, `prison`)은 없어야 한다

@@ -180,6 +180,34 @@ HAS2 서버 주소는 비밀이 아니므로 repository variable 없이
 `HAS2_Wifi`가 `HOST_NAME.substring(7)`로 IP를 잘라내므로 `https://`를 쓰면
 조용히 잘못된 주소가 된다.
 
+## BLE Location Rooms
+
+매장마다 방 이름이 다르므로 `location_protocol.h`의 `HAS3_ROOMS` 테이블을
+컴파일 타임에 선택한다. `GLOVE_WIFI_PROFILE`은 문자열 리터럴이라 전처리기로
+비교할 수 없어, `release_profiles.py`가 숫자 `GLOVE_PROFILE_ID`를 함께 쓴다.
+
+| profile | `GLOVE_PROFILE_ID` | rooms (HAS3_ROOMS 순서) |
+| --- | --- | --- |
+| `store2-badland` | 1 | prison, ruins, checkpoint, shoot, warehouse, academy |
+| `store2-city` | 2 | house, office, bar, gunshop, foodcourt, academy |
+| `store3-error` | 3 | bamboo, toilet, sleep, underground, hallway, crack |
+
+BLE 장치 이름은 방 이름의 첫 글자를 대문자로 접두에 갖는다. `bar itembox 1`은
+`HAS3:BI1`로 광고한다. 따라서 prefix는 `HAS3_ROOMS[i][0]`에서 파생되고, 방을
+추가하거나 바꿀 때 고칠 곳은 이 테이블 하나뿐이다.
+
+제약:
+
+- 한 프로필 안에서 방 이름 첫 글자가 겹치면 안 된다. 매핑이 모호해진다.
+- 세 프로필의 방 개수가 같아야 한다. `HAS3_ROOM_COUNT`는 두 바이너리가 공유하는
+  컴파일 타임 배열 크기다.
+- 프로필 간에는 같은 prefix가 다른 방을 뜻한다(`B`는 city의 `bar`,
+  store3의 `bamboo`). 따라서 **잘못된 프로필로 구운 장비는 방 이름을 조용히
+  틀리게 보고한다.** 서버가 이를 검출할 방법은 없다.
+
+위 표는 `tests/test_release_profiles.py`가 `location_protocol.h`를 파싱해
+`PROFILE_ROOMS`와 일치하는지 검증한다.
+
 ## Server Contract
 
 Current OTA policy: the server DB only changes `device_state` to `github`. Ignore any older references to `ota_channel` or `ota_manifest_url`; those are now firmware compile-time constants.

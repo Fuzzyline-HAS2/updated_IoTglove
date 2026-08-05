@@ -1,10 +1,13 @@
 import pathlib
+import re
 import subprocess
 import tempfile
 import unittest
 
 from scripts.release_profiles import (
     PROFILES,
+    PROFILE_IDS,
+    PROFILE_ROOMS,
     PROFILE_SERVERS,
     PROFILE_SSIDS,
     asset_names,
@@ -14,6 +17,27 @@ from scripts.release_profiles import (
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+def header_profile_ids(text):
+    """HAS3_PROFILE_<NAME> constants from location_protocol.h, keyed by profile."""
+    return {
+        name.lower().replace("_", "-"): int(value)
+        for name, value in re.findall(r"#define HAS3_PROFILE_(\w+) (\d+)", text)
+    }
+
+
+def header_profile_rooms(text):
+    """Room tables from location_protocol.h, keyed by profile."""
+    blocks = re.findall(
+        r"GLOVE_PROFILE_ID == HAS3_PROFILE_(\w+)\s*\n"
+        r"static const char \*const HAS3_ROOMS\[HAS3_ROOM_COUNT\] = \{([^}]*)\}",
+        text,
+    )
+    return {
+        name.lower().replace("_", "-"): tuple(re.findall(r'"([^"]+)"', body))
+        for name, body in blocks
+    }
 
 
 class ReleaseProfilesTest(unittest.TestCase):
@@ -49,6 +73,7 @@ class ReleaseProfilesTest(unittest.TestCase):
         self.assertIn('#define GLOVE_WIFI_SSID "bar"', text)
         self.assertIn('#define GLOVE_WIFI_PASS "password\\\\value"', text)
         self.assertIn('#define GLOVE_SERVER_HOST "http://172.30.1.44"', text)
+        self.assertIn("#define GLOVE_PROFILE_ID 2", text)
         self.assertEqual(c_string('bar"room\\ap'), '"bar\\\"room\\\\ap"')
 
     def test_profile_ssid_mapping_is_exact(self):
@@ -90,6 +115,72 @@ class ReleaseProfilesTest(unittest.TestCase):
 
     def test_every_profile_has_a_server(self):
         self.assertEqual(set(PROFILE_SERVERS), set(PROFILES))
+
+    def test_profile_ids_are_unique_and_cover_every_profile(self):
+        self.assertEqual(
+            PROFILE_IDS,
+            {"store2-badland": 1, "store2-city": 2, "store3-error": 3},
+        )
+        self.assertEqual(len(set(PROFILE_IDS.values())), len(PROFILES))
+
+    def test_profile_rooms_are_exact(self):
+        self.assertEqual(
+            PROFILE_ROOMS,
+            {
+                "store2-badland": (
+                    "prison",
+                    "ruins",
+                    "checkpoint",
+                    "shoot",
+                    "warehouse",
+                    "academy",
+                ),
+                "store2-city": (
+                    "house",
+                    "office",
+                    "bar",
+                    "gunshop",
+                    "foodcourt",
+                    "academy",
+                ),
+                "store3-error": (
+                    "bamboo",
+                    "toilet",
+                    "sleep",
+                    "underground",
+                    "hallway",
+                    "crack",
+                ),
+            },
+        )
+
+    def test_room_initials_are_unique_within_each_profile(self):
+        # BLE device names carry the room's initial as their first character, so
+        # two rooms sharing an initial would make the mapping ambiguous.
+        for profile, rooms in PROFILE_ROOMS.items():
+            initials = [room[0].upper() for room in rooms]
+            self.assertEqual(len(set(initials)), len(rooms), profile)
+
+    def test_every_profile_has_the_same_room_count(self):
+        # HAS3_ROOM_COUNT is a compile-time array bound shared by both binaries.
+        counts = {len(rooms) for rooms in PROFILE_ROOMS.values()}
+        self.assertEqual(counts, {6})
+        self.assertEqual(set(PROFILE_ROOMS), set(PROFILES))
+
+    def test_location_protocol_header_matches_profile_tables(self):
+        text = (ROOT / "location_protocol.h").read_text(encoding="utf-8")
+        self.assertEqual(header_profile_ids(text), PROFILE_IDS)
+        self.assertEqual(header_profile_rooms(text), PROFILE_ROOMS)
+        self.assertIn("#define HAS3_ROOM_COUNT 6", text)
+        self.assertIn("#ifndef GLOVE_PROFILE_ID", text)
+
+    def test_room_mapping_is_derived_from_the_table_only(self):
+        # The old hardcoded switch and prefix whitelist must stay gone: the room
+        # table is the single place a room or its initial is declared.
+        text = (ROOT / "location_protocol.h").read_text(encoding="utf-8")
+        self.assertIn("Has3RoomIndexFromPrefix", text)
+        self.assertNotIn('return "bamboo";', text)
+        self.assertNotIn("prefix == 'B'", text)
 
     def test_unknown_profile_is_rejected(self):
         with self.assertRaises(ValueError):

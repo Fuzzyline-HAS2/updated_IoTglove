@@ -8,5 +8,8 @@
 // Keep the "http://" scheme and no trailing slash. HAS2_Wifi recovers the bare
 // IP with HOST_NAME.substring(7), so "https://" silently yields a wrong address.
 #define GLOVE_SERVER_HOST "http://172.30.1.43"
+// Numeric form of GLOVE_WIFI_PROFILE for location_protocol.h room tables.
+// See HAS3_PROFILE_* there: badland=1, city=2, error=3.
+#define GLOVE_PROFILE_ID 1
 
 #endif
