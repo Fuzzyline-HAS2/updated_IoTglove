@@ -3,12 +3,44 @@
 
 #include <Arduino.h>
 
+// GLOVE_PROFILE_ID selects the room table below, so this header must not depend
+// on the includer having pulled in secrets.h first. wifi_location.h includes
+// this header before secrets.h, which would otherwise trip the #error guard.
+#include "secrets.h"
+
 #define HAS3_ROOM_COUNT 6
 #define HAS3_UNKNOWN_ROOM "unknown"
 #define HAS3_LOCAL_NAME_PREFIX "HAS3:"
 #define HAS3_MAX_DEVICE_NAME_LEN 18
 #define HAS3_DEVICE_NAME_BUFFER_SIZE (HAS3_MAX_DEVICE_NAME_LEN + 1)
 
+// Room names differ per store, so the table is selected at compile time. Must
+// stay in sync with PROFILE_IDS / PROFILE_ROOMS in scripts/release_profiles.py.
+#define HAS3_PROFILE_STORE2_BADLAND 1
+#define HAS3_PROFILE_STORE2_CITY 2
+#define HAS3_PROFILE_STORE3_ERROR 3
+
+#ifndef GLOVE_PROFILE_ID
+#error "GLOVE_PROFILE_ID must be defined in secrets.h"
+#endif
+
+#if GLOVE_PROFILE_ID == HAS3_PROFILE_STORE2_BADLAND
+static const char *const HAS3_ROOMS[HAS3_ROOM_COUNT] = {
+    "prison",
+    "ruins",
+    "checkpoint",
+    "shoot",
+    "warehouse",
+    "academy"};
+#elif GLOVE_PROFILE_ID == HAS3_PROFILE_STORE2_CITY
+static const char *const HAS3_ROOMS[HAS3_ROOM_COUNT] = {
+    "house",
+    "office",
+    "bar",
+    "gunshop",
+    "foodcourt",
+    "academy"};
+#elif GLOVE_PROFILE_ID == HAS3_PROFILE_STORE3_ERROR
 static const char *const HAS3_ROOMS[HAS3_ROOM_COUNT] = {
     "bamboo",
     "toilet",
@@ -16,6 +48,9 @@ static const char *const HAS3_ROOMS[HAS3_ROOM_COUNT] = {
     "underground",
     "hallway",
     "crack"};
+#else
+#error "Unknown GLOVE_PROFILE_ID; see HAS3_PROFILE_* in location_protocol.h"
+#endif
 
 inline int Has3RoomIndex(const char *room)
 {
@@ -39,10 +74,29 @@ inline bool Has3IsValidRoom(const char *room)
   return Has3RoomIndex(room) >= 0 || (room != nullptr && strcmp(room, HAS3_UNKNOWN_ROOM) == 0);
 }
 
+// A device name starts with its room's initial, uppercased: "bar itembox 1"
+// advertises as BI1. Deriving the prefix from HAS3_ROOMS keeps the room table
+// the only place a room or its initial is declared.
+inline int Has3RoomIndexFromPrefix(char prefix)
+{
+  for (int i = 0; i < HAS3_ROOM_COUNT; i++)
+  {
+    char initial = HAS3_ROOMS[i][0];
+    if (initial >= 'a' && initial <= 'z')
+    {
+      initial = (char)(initial - 'a' + 'A');
+    }
+    if (initial == prefix)
+    {
+      return i;
+    }
+  }
+  return -1;
+}
+
 inline bool Has3IsDevicePrefix(char prefix)
 {
-  return prefix == 'B' || prefix == 'T' || prefix == 'S' ||
-         prefix == 'U' || prefix == 'H' || prefix == 'C';
+  return Has3RoomIndexFromPrefix(prefix) >= 0;
 }
 
 inline bool Has3IsValidDeviceName(const char *device_name)
@@ -81,23 +135,12 @@ inline const char *Has3RoomFromDeviceName(const char *device_name)
     return nullptr;
   }
 
-  switch (device_name[0])
+  int room_index = Has3RoomIndexFromPrefix(device_name[0]);
+  if (room_index < 0)
   {
-  case 'B':
-    return "bamboo";
-  case 'T':
-    return "toilet";
-  case 'S':
-    return "sleep";
-  case 'U':
-    return "underground";
-  case 'H':
-    return "hallway";
-  case 'C':
-    return "crack";
-  default:
     return nullptr;
   }
+  return HAS3_ROOMS[room_index];
 }
 
 inline bool Has3ParseLocalName(const char *local_name, char *device_name, size_t device_name_size)

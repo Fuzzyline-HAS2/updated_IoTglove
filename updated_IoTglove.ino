@@ -61,7 +61,7 @@ void BootSerialInfo()
   Serial.println(FIRMWARE_BUILD_ID);
   Serial.print("[BOOT] mac=");
   Serial.println(WiFi.macAddress());
-  Serial.print("[BOOT] server=http://172.30.1.43/has2.php");
+  Serial.print("[BOOT] server=" GLOVE_SERVER_HOST "/has2.php");
   Serial.println();
 }
 

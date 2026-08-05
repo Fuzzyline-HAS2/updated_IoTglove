@@ -14,6 +14,52 @@ PROFILE_SSIDS = {
     "store2-city": "bar",
     "store3-error": "badland_shoot",
 }
+# HAS2 server per profile. Not a secret, so the table is the single source of
+# truth instead of a GitHub Actions variable. Keep the "http://" scheme and no
+# trailing slash: HAS2_Wifi.cpp recovers the bare IP with HOST_NAME.substring(7).
+PROFILE_SERVERS = {
+    "store2-badland": "http://172.30.1.43",
+    "store2-city": "http://172.30.1.44",
+    "store3-error": "http://172.30.1.43",
+}
+# Numeric ids let location_protocol.h pick a room table with #if. The C
+# preprocessor cannot compare GLOVE_WIFI_PROFILE, which is a string literal.
+# Must stay in sync with the HAS3_PROFILE_* constants in location_protocol.h.
+PROFILE_IDS = {
+    "store2-badland": 1,
+    "store2-city": 2,
+    "store3-error": 3,
+}
+# BLE location rooms per profile, in HAS3_ROOMS order. A device name carries its
+# room's initial as the first character (bar itembox 1 -> BI1), so the initials
+# must stay unique within a profile. Room counts must stay equal across profiles
+# because HAS3_ROOM_COUNT is a shared compile-time array bound.
+PROFILE_ROOMS = {
+    "store2-badland": (
+        "prison",
+        "ruins",
+        "checkpoint",
+        "shoot",
+        "warehouse",
+        "academy",
+    ),
+    "store2-city": (
+        "house",
+        "office",
+        "bar",
+        "gunshop",
+        "foodcourt",
+        "academy",
+    ),
+    "store3-error": (
+        "bamboo",
+        "toilet",
+        "sleep",
+        "underground",
+        "hallway",
+        "crack",
+    ),
+}
 PROFILES = tuple(PROFILE_SSIDS)
 
 
@@ -60,7 +106,9 @@ def write_secrets_header(
         f"#define HMAC_SECRET {c_string(hmac_secret)}\n"
         f"#define GLOVE_WIFI_PROFILE {c_string(profile)}\n"
         f"#define GLOVE_WIFI_SSID {c_string(ssid)}\n"
-        f"#define GLOVE_WIFI_PASS {c_string(wifi_password)}\n\n"
+        f"#define GLOVE_WIFI_PASS {c_string(wifi_password)}\n"
+        f"#define GLOVE_SERVER_HOST {c_string(PROFILE_SERVERS[profile])}\n"
+        f"#define GLOVE_PROFILE_ID {PROFILE_IDS[profile]}\n\n"
         "#endif\n",
         encoding="utf-8",
     )

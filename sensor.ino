@@ -628,7 +628,7 @@ bool SendLocationToServer(const String &location)
   }
 
   HTTPClient location_http;
-  String request = String("http://172.30.1.43/has2.php?request=Send&table=device&key=") +
+  String request = String(GLOVE_SERVER_HOST "/has2.php?request=Send&table=device&key=") +
                    device_name + "&column=location&value=" + location;
   location_http.begin(request);
   int http_code = location_http.GET();
