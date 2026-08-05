@@ -20,9 +20,11 @@
 | `taken_chip` | 술래가 획득한 생명 수 |
 | `battery_pack` | 배터리/아이템 표시용 |
 | `lv` | 레벨 표시용 |
-| `device_state` | `setting`, `ready`, `start`, `photo` 등 화면 상태 |
+| `device_state` | `setting`, `ready`, `activate`, `photo`, `github_*`, `ota_error` 등 화면/OTA 상태 |
 | `game_state` | 게임 진행 상태 |
 | `shift_machine` | 펌웨어가 전체 `my` 데이터를 다시 읽도록 하는 변경 트리거 |
+| `esp_version` | TTGO가 부팅 후 보고하는 현재 펌웨어 SemVer 문자열 |
+| `nextion_version` | TTGO가 `pgSetting.vVersion.val`에서 읽어 보고하는 값; 실패 시 `-1` |
 
 ### 새로 필요하거나 확정해야 하는 필드
 
@@ -35,6 +37,41 @@
 | `round_taken_chip` | int | 필수 | 결과 화면에서 술래가 해당 라운드에 획득한 생명 수 |
 | `max_chip` | int | 권장 | 술래 화면 `pgTagFull` 전환 기준. 없으면 펌웨어 기본값 사용 필요 |
 | `revival_help_log` | table/log | 선택 | 서버에서 중복 도움 이벤트까지 막고 싶을 때 사용 |
+
+## OTA 서버 계약
+
+OTA 채널이나 manifest URL을 위한 별도 DB 필드를 추가하지 않는다. 서버는 대상
+장갑의 `device_state`만 변경한다.
+
+| `device_state` 값 | 동작 |
+| --- | --- |
+| `github` | 펌웨어 compile-time 기본 채널 |
+| `github_dev` | `dev-latest`의 현재 매장 프로필 |
+| `github_rc` | `rc-latest`의 현재 매장 프로필 |
+| `github_prd` | GitHub production latest |
+| `github_dev@v1.2.4-dev.29` | 고정 dev 태그의 현재 매장 프로필 |
+| `github_rc@v1.2.4-rc.1` | 고정 rc 태그의 현재 매장 프로필 |
+| `github_prd@v1.2.4` | 고정 production 태그의 현재 매장 프로필 |
+
+명령에 city/badland/error를 붙이지 않는다. USB로 설치된 TTGO와 Beetle의
+compile-time `GLOVE_WIFI_PROFILE`이 프로필별 manifest를 자동 선택하며, 다른
+프로필 manifest는 펌웨어가 거부한다.
+
+OTA 진행 순서:
+
+1. TTGO가 명령을 Beetle에 전달한다.
+2. Beetle이 `beetle_ota_done`, `beetle_ota_skip`, `beetle_ota_error` 중 하나를
+   TTGO에 보낸다. 응답이 없으면 TTGO는 180초 후 자체 OTA로 진행한다.
+3. TTGO가 자신의 프로필별 manifest와 HMAC 서명을 검증해 설치한다.
+4. 성공하면 `device_state=setting`을 서버에 보내고 재부팅한다.
+5. 재부팅 후 `esp_version`과 `nextion_version`을 다시 보고한다.
+
+manifest/채널/프로필/서명/다운로드가 실패하면 TTGO가
+`device_state=ota_error`를 보낸다. Beetle 버전은 별도 DB 필드로 보고하지 않으므로
+TTGO Telnet의 `beetle_ota_done` 또는 Beetle USB Serial build ID로 확인한다.
+
+같은 `version_code`는 skip한다. 현재 QA 정책은 고정 태그 rollback을 위해 이전
+version code도 허용한다.
 
 ## 서버 동작 변경
 
