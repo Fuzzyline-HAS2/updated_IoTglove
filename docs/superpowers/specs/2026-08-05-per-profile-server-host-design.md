@@ -1,7 +1,12 @@
 # 프로필별 서버 주소 / BLE 방 이름 분리 설계
 
 - 날짜: 2026-08-05
-- 대상 브랜치: `codex/release-v1.2.4-dev.26`
+- 작성 당시 대상 브랜치: `codex/release-v1.2.4-dev.26`
+- 상태: 구현 완료. `v1.2.4-dev.29` 세 프로필 Release 자산 검증과
+  `store2-city` 실장비 OTA 완료; `store2-badland`/`store3-error` 실장비 OTA는 예정
+
+> 이 파일은 구현 전 의사결정을 보존하는 역사적 설계 문서다. 현재 사용법은
+> 루트 `README.md`와 `docs/USB_OTA_TEST_GUIDE.md`를 따른다.
 
 ## 배경
 
