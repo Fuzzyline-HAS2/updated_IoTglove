@@ -48,13 +48,15 @@ void UpdatePageBattery(const char *page)
 
 // Nextion HMI(glove.HMI)의 언어 변수는 pgStart 페이지의 전역 변수 vLanguage 하나뿐이다.
 // 각 페이지의 preinitialize 이벤트가 `pgX.pic=vLangPicNum.val+pgStart.vLanguage.val`
-// 로 배경 그림을 고르므로 값은 그림 오프셋이다: 0 = 한국어(HMI 기본값), 1 = 영어.
-// (예전 코드는 존재하지 않는 pgInfo.vLanguage 에 썼고 EN을 0으로 보내, 명령이 거부되어
-//  항상 기본값 0(한국어)만 표시됐다.)
+// 로 배경 그림을 고르므로 값은 그림 오프셋이다. HMI 그림 라이브러리는 페이지마다
+// [영어, 한국어] 순서로 쌍을 이루고(예: pgInfo 168=EXPLORING, 169=맵 탐색) vLanguage 의
+// HMI 기본값은 1 이다. 따라서 0 = 영어, 1 = 한국어(기본).
+// (dev.29 이전 코드는 존재하지 않는 pgInfo.vLanguage 에 써서 명령이 거부되어 항상 기본값
+//  1(한국어)만 표시됐고, dev.30 은 변수 이름은 고쳤지만 값을 거꾸로 보냈다.)
 int HmiLanguageValue()
 {
     const char *selected_language = shift_machine["selected_language"].as<const char *>();
-    return (selected_language != NULL && strcmp(selected_language, "EN") == 0) ? 1 : 0;
+    return (selected_language != NULL && strcmp(selected_language, "EN") == 0) ? 0 : 1;
 }
 
 void UpdateHmiLanguage()
