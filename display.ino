@@ -46,11 +46,33 @@ void UpdatePageBattery(const char *page)
     SendHmiPic(page, "pBatteryPack", "vBatPicNum", battery_pack, 0, 4);
 }
 
-void UpdateHmiLanguage()
+// Nextion HMI(glove.HMI)의 언어 변수는 pgStart 페이지의 전역 변수 vLanguage 하나뿐이다.
+// 각 페이지의 preinitialize 이벤트가 `pgX.pic=vLangPicNum.val+pgStart.vLanguage.val`
+// 로 배경 그림을 고르므로 값은 그림 오프셋이다: 0 = 한국어(HMI 기본값), 1 = 영어.
+// (예전 코드는 존재하지 않는 pgInfo.vLanguage 에 썼고 EN을 0으로 보내, 명령이 거부되어
+//  항상 기본값 0(한국어)만 표시됐다.)
+int HmiLanguageValue()
 {
     const char *selected_language = shift_machine["selected_language"].as<const char *>();
-    int hmi_language = (selected_language != NULL && strcmp(selected_language, "EN") == 0) ? 0 : 1;
-    SendHmiValue("pgInfo.vLanguage", hmi_language);
+    return (selected_language != NULL && strcmp(selected_language, "EN") == 0) ? 1 : 0;
+}
+
+void UpdateHmiLanguage()
+{
+    int hmi_language = HmiLanguageValue();
+    SendHmiValue("pgStart.vLanguage", hmi_language);
+
+    // 배경 그림은 페이지가 열릴 때(preinitialize)만 언어를 읽는다. 준비 화면(pgInfo)에
+    // 머무는 동안 언어가 바뀌면 같은 페이지를 다시 열어 바로 반영한다. 게임 중 페이지는
+    // 타이머·게이지 상태가 있어 강제로 다시 열지 않고 다음 페이지 전환부터 반영된다.
+    if (hmi_language != last_hmi_language)
+    {
+        last_hmi_language = hmi_language;
+        if (game_state == ready && TextEquals(current_hmi_page, "pgInfo"))
+        {
+            sendCommand("page pgInfo");
+        }
+    }
 }
 
 void UpdateHmiBattery()

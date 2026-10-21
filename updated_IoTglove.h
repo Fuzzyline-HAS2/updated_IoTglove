@@ -95,6 +95,7 @@ String last_sent_location;
 String pending_location;
 unsigned long last_location_send_fail_at = 0;
 bool location_vibe_muted = false;
+int last_hmi_language = -1; // 마지막으로 HMI에 보낸 pgStart.vLanguage 값 (-1: 미전송)
 
 typedef enum GameState
 {
@@ -113,6 +114,7 @@ void DisplaySet();
 void DisplayCheck();
 void PageChange(const char *page);
 void SendHmiValue(const char *target, int value);
+int HmiLanguageValue();
 void UpdateHmiLanguage();
 void UpdateHmiBattery();
 void UpdateHmiResults();

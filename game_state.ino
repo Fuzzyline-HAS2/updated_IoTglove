@@ -724,6 +724,9 @@ void ReadyFunc()
 
     ResetActivateSideEffects(true);
     sendCommand("sleep=0");
+    // setting 동안은 디스플레이가 슬립(sleep=1)이라 그 사이 보낸 언어 값이 무시될 수 있다.
+    // 깨운 직후, pgInfo 를 열기 전에 다시 보내 준비 화면부터 올바른 언어로 그린다.
+    UpdateHmiLanguage();
     PageChange("pgInfo");
     lightColor(red);
 }
